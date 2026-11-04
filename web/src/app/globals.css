@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #141414;
+  --color-paper: #fff8e1;
+  --color-banana: #ffe066;
+  --color-hot: #ff6b6b;
+  --color-mint: #a0e7e5;
+  --color-grape: #7b2cbf;
+  --font-display: ui-rounded, "Arial Black", system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Deliberately janky: chunky borders, hard shadows. */
+.brut {
+  border: 3px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  border-radius: 14px;
+}
+.brut-btn {
+  border: 3px solid var(--color-ink);
+  box-shadow: 4px 4px 0 var(--color-ink);
+  border-radius: 12px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  transition: transform 80ms, box-shadow 80ms;
+}
+.brut-btn:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--color-ink);
+}
+.brut-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+canvas.game {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
