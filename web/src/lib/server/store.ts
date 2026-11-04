@@ -35,7 +35,8 @@ export type GameEvent = {
   data: Record<string, unknown>;
 };
 
-export type EventQuery = { gameId?: string; kinds?: EventKind[]; limit: number; ascending?: boolean };
+/** `actor` matches the trader/creator address case-insensitively. */
+export type EventQuery = { gameId?: string; kinds?: EventKind[]; actor?: string; limit: number; ascending?: boolean };
 
 export interface GameStore {
   create(rec: Omit<GameRecord, "created_at">): Promise<void>;
@@ -112,6 +113,8 @@ class SupabaseStore implements GameStore {
     let query = this.db.from("events").select("*");
     if (q.gameId) query = query.eq("game_id", q.gameId);
     if (q.kinds?.length) query = query.in("kind", q.kinds);
+    // Addresses contain no LIKE wildcards, so ilike is an exact case-insensitive match.
+    if (q.actor) query = query.ilike("actor", q.actor);
     const { data, error } = await query.order("created_at", { ascending: !!q.ascending }).limit(q.limit);
     if (error) throw new Error(`db events: ${error.message}`);
     return (data as GameEvent[]) ?? [];
@@ -183,7 +186,12 @@ class LocalStore implements GameStore {
   }
   async listEvents(q: EventQuery) {
     const rows = (await readJson<GameEvent>(EVENTS_FILE))
-      .filter((r) => (!q.gameId || r.game_id === q.gameId) && (!q.kinds?.length || q.kinds.includes(r.kind)))
+      .filter(
+        (r) =>
+          (!q.gameId || r.game_id === q.gameId) &&
+          (!q.kinds?.length || q.kinds.includes(r.kind)) &&
+          (!q.actor || r.actor?.toLowerCase() === q.actor.toLowerCase()),
+      )
       .sort((a, b) => (q.ascending ? 1 : -1) * a.created_at.localeCompare(b.created_at));
     return rows.slice(0, q.limit);
   }

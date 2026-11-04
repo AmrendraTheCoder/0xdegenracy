@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
                 <nav className="flex gap-3 text-sm font-bold">
                   <Link href="/leaderboard" className="hover:underline">🏆<span className="hidden sm:inline"> Leaderboard</span></Link>
+                  <Link href="/portfolio" className="hover:underline">💼<span className="hidden sm:inline"> Portfolio</span></Link>
                   <Link href="/activity" className="hover:underline">📜<span className="hidden sm:inline"> Activity</span></Link>
                 </nav>
               </div>
