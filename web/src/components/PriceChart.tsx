@@ -1,52 +1,71 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useId } from "react";
 import type { Address } from "viem";
-import { useReadContract } from "wagmi";
-import { gameTokenAbi } from "@/lib/abi";
-import { explorerTx, monadTestnet } from "@/lib/chain";
 import { fmtMon, fmtPrice, fmtTokens, short, timeAgo } from "@/lib/format";
-import { TRADE_EVENT } from "@/lib/useTx";
-
-type Trade = {
-  id: string;
-  created_at: string;
-  kind: "buy" | "sell";
-  tx_hash: string;
-  actor: string;
-  data: { tokensWhole: string; value: string; newPrice: string };
-};
+import { useLivePrice, useTrades, type Trade } from "@/lib/hooks/useToken";
+import { explorerTx } from "@/lib/chain";
+import { Card, ErrorState, Notice, Skeleton, cn } from "./ui";
 
 const BASE_PRICE = 1e8; // GameTokenFactory.BASE_PRICE
 
+export type PriceChartProps = { gameId: string; launchedAt: string; accent: string; token: Address };
+
 /** Price-over-time step chart from verified trades, plus the latest trades as on-chain proof. */
-export function PriceChart({ gameId, launchedAt, accent, token }: { gameId: string; launchedAt: string; accent: string; token: Address }) {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [loaded, setLoaded] = useState(false);
+export function PriceChart({ gameId, launchedAt, accent, token }: PriceChartProps) {
+  const { trades, status, retry } = useTrades(gameId);
   // The live on-chain price anchors "now", so the chart is right even for trades made before logging existed.
-  const live = useReadContract({ address: token, abi: gameTokenAbi, functionName: "currentPrice", chainId: monadTestnet.id, query: { refetchInterval: 5000 } });
+  const live = useLivePrice(token);
+  const last = live !== undefined ? Number(live) : trades.length ? Number(trades.at(-1)!.data.newPrice) : BASE_PRICE;
+  const change = ((last - BASE_PRICE) / BASE_PRICE) * 100;
+  const up = change >= 0;
 
-  const load = useCallback(async () => {
-    const res = await fetch(`/api/games/${gameId}/trades`, { cache: "no-store" }).catch(() => null);
-    if (res?.ok) setTrades((await res.json()).trades);
-    setLoaded(true);
-  }, [gameId]);
+  return (
+    <Card
+      id="price"
+      title="Price"
+      action={
+        <p className="text-right text-sm" aria-live="polite">
+          <b>{fmtPrice(last)}</b>{" "}
+          <span className={cn("font-bold", up ? "text-up" : "text-hot-strong")}>
+            <span aria-hidden>{up ? "▲" : "▼"}</span> {up ? "+" : ""}
+            {change.toFixed(2)}%<span className="sr-only"> since launch</span>
+          </span>
+        </p>
+      }
+    >
+      {status === "loading" ? (
+        <Skeleton className="h-32 w-full" />
+      ) : (
+        <StepChart trades={trades} launchedAt={launchedAt} last={last} accent={accent} />
+      )}
 
-  useEffect(() => {
-    load();
-    const t = setInterval(load, 8000);
-    window.addEventListener(TRADE_EVENT, load);
-    return () => {
-      clearInterval(t);
-      window.removeEventListener(TRADE_EVENT, load);
-    };
-  }, [load]);
+      <h3 className="mt-4 text-sm font-black">Recent trades</h3>
+      <div className="mt-1">
+        {status === "loading" ? (
+          <div className="space-y-2 py-1" aria-label="Loading trades" role="status">
+            {[0, 1, 2].map((i) => <Skeleton key={i} className="h-4 w-full" />)}
+          </div>
+        ) : status === "error" ? (
+          <ErrorState title="Couldn't load trades" message="The chart may be out of date." onRetry={retry} />
+        ) : trades.length === 0 ? (
+          <Notice title="No trades yet">Be the first to buy. Price starts at {fmtPrice(BASE_PRICE)}.</Notice>
+        ) : (
+          <RecentTrades trades={trades.slice(-8).reverse()} />
+        )}
+      </div>
+    </Card>
+  );
+}
 
-  // Points: launch at base price, then the price after each trade.
+function StepChart({ trades, launchedAt, last, accent }: { trades: Trade[]; launchedAt: string; last: number; accent: string }) {
+  const titleId = useId();
+  const descId = useId();
+  // Points: launch at base price, then the price after each trade, then "now" at the live price.
   const pts = [
     { t: new Date(launchedAt).getTime(), p: BASE_PRICE },
     ...trades.map((tr) => ({ t: new Date(tr.created_at).getTime(), p: Number(tr.data.newPrice) })),
-    { t: Date.now(), p: live.data !== undefined ? Number(live.data) : trades.length ? Number(trades.at(-1)!.data.newPrice) : BASE_PRICE },
+    { t: Date.now(), p: last },
   ];
   const W = 320;
   const H = 120;
@@ -61,48 +80,50 @@ export function PriceChart({ gameId, launchedAt, accent, token }: { gameId: stri
   // Step line: price holds until the next trade.
   let d = `M ${x(pts[0].t)} ${y(pts[0].p)}`;
   for (let i = 1; i < pts.length; i++) d += ` H ${x(pts[i].t)} V ${y(pts[i].p)}`;
-  const last = pts.at(-1)!.p;
-  const change = ((last - BASE_PRICE) / BASE_PRICE) * 100;
+  const buys = trades.filter((t) => t.kind === "buy").length;
 
   return (
-    <section className="brut bg-white p-4">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-black">Price</h2>
-        <div className="text-right text-sm">
-          <b>{fmtPrice(last)}</b>{" "}
-          <span className={change >= 0 ? "text-green-700" : "text-hot"}>{change >= 0 ? "+" : ""}{change.toFixed(2)}%</span>
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full" role="img" aria-label="Price over time">
+    <figure>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full" role="img" aria-labelledby={`${titleId} ${descId}`}>
+        <title id={titleId}>Price over time</title>
+        <desc id={descId}>
+          {`Started at ${fmtPrice(BASE_PRICE)} at launch, now ${fmtPrice(last)} after ${trades.length} trades (${buys} buys, ${trades.length - buys} sells).`}
+        </desc>
         <path d={`${d} V ${H - pad} H ${x(pts[0].t)} Z`} fill={accent} opacity={0.15} />
-        <path d={d} fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" />
+        <path d={d} fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" stroke="#141414" strokeWidth={1} strokeLinejoin="round" opacity={0.5} vectorEffect="non-scaling-stroke" />
         {trades.map((tr) => (
-          <circle key={tr.id} cx={x(new Date(tr.created_at).getTime())} cy={y(Number(tr.data.newPrice))} r={3.5} fill={tr.kind === "buy" ? "#16a34a" : "#ff6b6b"} stroke="#141414" strokeWidth={1} />
+          <circle key={tr.id} cx={x(new Date(tr.created_at).getTime())} cy={y(Number(tr.data.newPrice))} r={3.5} fill={tr.kind === "buy" ? "#15803d" : "#ff6b6b"} stroke="#141414" strokeWidth={1} />
         ))}
       </svg>
-      <div className="mt-1 flex justify-between text-[11px] opacity-60">
+      <figcaption className="mt-1 flex justify-between text-[11px] text-ink/70">
         <span>launch</span>
-        <span>{trades.length} trades</span>
+        <span>
+          {trades.length} trade{trades.length === 1 ? "" : "s"} · <span className="text-up">● buy</span> <span className="text-hot-strong">● sell</span>
+        </span>
         <span>now</span>
-      </div>
+      </figcaption>
+    </figure>
+  );
+}
 
-      <h3 className="mt-3 text-sm font-black">Recent trades</h3>
-      {!loaded ? (
-        <p className="text-xs opacity-60">Loading…</p>
-      ) : trades.length === 0 ? (
-        <p className="text-xs opacity-60">No trades yet. Be first.</p>
-      ) : (
-        <ul className="mt-1 divide-y divide-ink/10 text-xs">
-          {trades.slice(-8).reverse().map((tr) => (
-            <li key={tr.id} className="flex items-center justify-between gap-2 py-1">
-              <span className={`font-black ${tr.kind === "buy" ? "text-green-700" : "text-hot"}`}>{tr.kind.toUpperCase()}</span>
-              <span>{fmtTokens(BigInt(tr.data.tokensWhole))} · {fmtMon(BigInt(tr.data.value))} MON</span>
-              <span className="opacity-60">{short(tr.actor)}</span>
-              <a className="underline" href={explorerTx(tr.tx_hash)} target="_blank" rel="noreferrer">{timeAgo(tr.created_at)} ↗</a>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+function RecentTrades({ trades }: { trades: Trade[] }) {
+  return (
+    <ul className="divide-y divide-ink/10 text-xs">
+      {trades.map((tr) => (
+        <li key={tr.id} className="grid grid-cols-[3rem_1fr_auto] items-center gap-2 py-1.5 sm:grid-cols-[3rem_1fr_auto_auto]">
+          <span className={cn("font-black", tr.kind === "buy" ? "text-up" : "text-hot-strong")}>{tr.kind.toUpperCase()}</span>
+          <span className="truncate">
+            {fmtTokens(BigInt(tr.data.tokensWhole))} · {fmtMon(BigInt(tr.data.value))} MON
+          </span>
+          <span className="hidden font-mono text-ink/70 sm:inline">{short(tr.actor)}</span>
+          <a className="font-bold underline" href={explorerTx(tr.tx_hash)} target="_blank" rel="noreferrer">
+            {timeAgo(tr.created_at)}
+            <span aria-hidden> ↗</span>
+            <span className="sr-only"> view {tr.kind} transaction on explorer (opens in a new tab)</span>
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }

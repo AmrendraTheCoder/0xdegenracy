@@ -1,17 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { GameConfig } from "@/lib/game-config";
 import { COMMON_KEYS, GAMES, GAME_META, type PadButton } from "@/games";
 import { runGame, type GameController } from "@/games/engine";
+import { buttonClasses, cn } from "./ui";
 
-export function GamePlayer({ config, imageUrl, gameId }: { config: GameConfig; imageUrl: string; gameId: string }) {
+export type GamePlayerProps = {
+  config: GameConfig;
+  imageUrl: string;
+  gameId: string;
+  /** Anchor of the trade panel the post-game CTA links to. */
+  tradeHref?: string;
+};
+
+export function GamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: GamePlayerProps) {
   const ref = useRef<HTMLCanvasElement>(null);
   const ctrl = useRef<GameController | null>(null);
   const [best, setBest] = useState(0);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [muted, setMuted] = useState(false);
   const meta = GAME_META[config.gameType];
+  const descId = useId();
 
   useEffect(() => {
     if (!ref.current) return;
@@ -39,70 +49,84 @@ export function GamePlayer({ config, imageUrl, gameId }: { config: GameConfig; i
     };
   }, [config, imageUrl, gameId]);
 
+  /** A tap on a key (down then up), for buttons that act once per click. */
+  const tapKey = (code: string) => {
+    ctrl.current?.keyDown(code);
+    ctrl.current?.keyUp(code);
+    ref.current?.focus({ preventScroll: true });
+  };
+
   return (
-    <div className="mx-auto max-w-[400px]">
+    <div className="mx-auto w-full max-w-[400px]">
       <div className="relative">
         <canvas
           ref={ref}
           className="game brut block aspect-[2/3] w-full"
           style={{ background: config.colors.bg }}
-          aria-label={`${config.title} game. ${meta.controls}`}
+          role="application"
+          aria-roledescription="game"
+          aria-label={`${config.title}, a ${meta.label} game`}
+          aria-describedby={descId}
           tabIndex={0}
         />
-        <div className="absolute right-2 top-2 flex gap-1">
-          <IconButton label={muted ? "Unmute (M)" : "Mute (M)"} onClick={() => setMuted(ctrl.current?.toggleMute() ?? false)}>
+        <p id={descId} className="sr-only">
+          {`${meta.controls}. Press Space or Enter to start. P or Escape pauses, R restarts, M mutes. Best score ${best} ${config.scoreLabel}.`}
+        </p>
+        <div className="absolute right-2 top-2 flex gap-1.5" role="toolbar" aria-label="Game controls">
+          <IconButton label={muted ? "Unmute (M)" : "Mute (M)"} pressed={muted} onClick={() => setMuted(ctrl.current?.toggleMute() ?? false)}>
             {muted ? "🔇" : "🔊"}
           </IconButton>
-          <IconButton label="Pause (P)" onClick={() => ctrl.current?.keyDown("KeyP")} onRelease={() => ctrl.current?.keyUp("KeyP")}>
-            ⏸
-          </IconButton>
-          <IconButton label="Restart (R)" onClick={() => ctrl.current?.keyDown("KeyR")} onRelease={() => ctrl.current?.keyUp("KeyR")}>
-            ↻
-          </IconButton>
+          <IconButton label="Pause (P)" onClick={() => tapKey("KeyP")}>⏸</IconButton>
+          <IconButton label="Restart (R)" onClick={() => tapKey("KeyR")}>↻</IconButton>
         </div>
       </div>
 
       {meta.pad.length > 0 && <Pad buttons={meta.pad} dpad={meta.dpad} ctrl={ctrl} />}
 
-      <div className="mt-2 flex items-center justify-between text-xs font-bold">
-        <span>{meta.emoji} {meta.controls}</span>
-        <span className="shrink-0">Best: {best}</span>
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold">
+        <span>
+          <span aria-hidden>{meta.emoji} </span>
+          {meta.controls}
+        </span>
+        <span className="shrink-0 rounded-full border-2 border-ink bg-white px-2 py-0.5">Best: {best}</span>
       </div>
-      <div className="mt-1 hidden flex-wrap gap-x-3 gap-y-1 text-[11px] opacity-70 sm:flex">
+      <ul className="mt-2 hidden flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink/70 sm:flex" aria-label="Keyboard shortcuts">
         {COMMON_KEYS.map((k) => (
-          <span key={k.key}>
-            <kbd className="rounded border border-ink/40 bg-white px-1 font-mono">{k.key}</kbd> {k.what}
-          </span>
+          <li key={k.key}>
+            <kbd className="rounded border border-ink/40 bg-white px-1 font-mono text-ink">{k.key}</kbd> {k.what}
+          </li>
         ))}
-      </div>
+      </ul>
 
-      {lastScore !== null && (
-        <a href="#buy" className="brut-btn mt-3 block bg-hot py-3 text-center text-xl text-white">
-          {lastScore} {config.scoreLabel}. Cope by buying ${config.ticker} →
-        </a>
-      )}
+      <div aria-live="polite" aria-atomic="true">
+        {lastScore !== null && (
+          <a href={tradeHref} className={buttonClasses({ variant: "primary", size: "lg", block: true, className: "mt-3 text-xl" })}>
+            {lastScore} {config.scoreLabel}. Cope by buying ${config.ticker} →
+          </a>
+        )}
+      </div>
     </div>
   );
 }
 
-function IconButton({ label, onClick, onRelease, children }: { label: string; onClick: () => void; onRelease?: () => void; children: React.ReactNode }) {
+function IconButton({ label, onClick, pressed, children }: { label: string; onClick: () => void; pressed?: boolean; children: React.ReactNode }) {
   return (
     <button
       type="button"
       aria-label={label}
+      aria-pressed={pressed}
       title={label}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        onClick();
-      }}
-      onPointerUp={onRelease}
-      onPointerLeave={onRelease}
-      className="grid h-8 w-8 place-items-center rounded-lg border-2 border-ink bg-white/85 text-sm shadow-[2px_2px_0_#141414] active:translate-x-[1px] active:translate-y-[1px]"
+      // Keep focus on the canvas when tapped, so the keyboard keeps driving the game; click still works from the keyboard.
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={onClick}
+      className="grid h-9 w-9 place-items-center rounded-lg border-2 border-ink bg-white/90 text-sm shadow-[2px_2px_0_#141414] active:translate-x-[1px] active:translate-y-[1px]"
     >
-      {children}
+      <span aria-hidden>{children}</span>
     </button>
   );
 }
+
+const PAD_NAMES: Record<string, string> = { ArrowLeft: "Left", ArrowRight: "Right", ArrowUp: "Up", ArrowDown: "Down" };
 
 /** Touch buttons that hold a key down while pressed, so movement keeps going while your thumb is on it. */
 function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ctrl: React.RefObject<GameController | null> }) {
@@ -110,7 +134,7 @@ function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ct
     <button
       key={b.code + b.label}
       type="button"
-      aria-label={`${b.label} (${b.hint})`}
+      aria-label={PAD_NAMES[b.code] ?? b.label}
       onPointerDown={(e) => {
         e.preventDefault();
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -118,18 +142,27 @@ function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ct
       }}
       onPointerUp={() => ctrl.current?.keyUp(b.code)}
       onPointerCancel={() => ctrl.current?.keyUp(b.code)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          ctrl.current?.keyDown(b.code);
+        }
+      }}
+      onKeyUp={(e) => {
+        if (e.key === "Enter" || e.key === " ") ctrl.current?.keyUp(b.code);
+      }}
       onContextMenu={(e) => e.preventDefault()}
-      className={`brut-btn flex select-none flex-col items-center justify-center bg-white py-3 text-2xl leading-none touch-none ${extra}`}
+      className={cn("brut-btn flex min-h-14 touch-none select-none flex-col items-center justify-center bg-white py-3 text-2xl leading-none", extra)}
     >
-      <span>{b.label}</span>
-      <span className="mt-1 text-[10px] font-bold opacity-50">{b.hint}</span>
+      <span aria-hidden>{b.label}</span>
+      <span aria-hidden className="mt-1 text-[10px] font-bold text-ink/60">{b.hint}</span>
     </button>
   );
 
   if (dpad) {
     const [up, left, down, right] = buttons;
     return (
-      <div className="mx-auto mt-3 grid w-56 grid-cols-3 gap-2">
+      <div className="mx-auto mt-3 grid w-56 grid-cols-3 gap-2" role="group" aria-label="Direction pad">
         <span />
         {btn(up)}
         <span />
@@ -140,7 +173,7 @@ function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ct
     );
   }
   return (
-    <div className="mt-3 flex gap-2">
+    <div className="mt-3 flex gap-2" role="group" aria-label="On-screen controls">
       {buttons.map((b) => btn(b, b.wide ? "flex-[2] bg-banana" : "flex-1"))}
     </div>
   );
