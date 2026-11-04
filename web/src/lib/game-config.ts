@@ -3,7 +3,7 @@ import { z } from "zod";
 // The LLM contract. The model may only return this JSON; everything is validated, clamped and
 // defaulted here so a junk response can never break a game page.
 
-export const GAME_TYPES = ["flappy", "runner", "dodge"] as const;
+export const GAME_TYPES = ["flappy", "runner", "dodge", "whack", "snake", "breakout", "shooter"] as const;
 export type GameType = (typeof GAME_TYPES)[number];
 
 const HEX = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/;

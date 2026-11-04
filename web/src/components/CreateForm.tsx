@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAccount } from "wagmi";
 import { GAME_TYPES, type GameConfig, type GameType } from "@/lib/game-config";
 import { GAME_META } from "@/games";
 import { prepareImage } from "@/lib/image";
+import { explorerTx } from "@/lib/chain";
+import { useToast } from "./Toaster";
 
 type Step = "idle" | "config" | "token" | "publish";
 const STEPS: { key: Exclude<Step, "idle">; label: string }[] = [
@@ -18,6 +20,10 @@ const EXAMPLES = [
   "a monkey runs behind a banana chasing it",
   "my boss flaps through a sea of meetings",
   "catch falling pizzas, dodge the broccoli",
+  "whack my roommate when he pops out of holes",
+  "a snake that eats crypto candles",
+  "smash the bricks of the bank",
+  "shoot down alien rug pullers in space",
 ];
 
 export function CreateForm() {
@@ -29,6 +35,8 @@ export function CreateForm() {
   const [ticker, setTicker] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const configCache = useRef(new Map<string, GameConfig>());
   const busy = step !== "idle";
 
   async function onFile(f: File | undefined) {
@@ -45,18 +53,26 @@ export function CreateForm() {
   async function onCreate() {
     if (!image || prompt.trim().length < 3) return;
     setError(null);
+    const toastId = toast({ kind: "pending", title: "Creating your game", description: "Generating config…" });
     try {
       setStep("config");
-      const gen = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, gameType: gameType || undefined, ticker: ticker || undefined }),
-      });
-      const genJson = await gen.json();
-      if (!gen.ok) throw new Error(genJson.error ?? "Could not generate game");
-      const config = genJson.config as GameConfig;
+      // Reuse the config from a failed attempt with the same inputs, so a retry doesn't call the LLM again.
+      const cacheKey = JSON.stringify([prompt.trim(), gameType, ticker]);
+      let config = configCache.current.get(cacheKey);
+      if (!config) {
+        const gen = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, gameType: gameType || undefined, ticker: ticker || undefined }),
+        });
+        const genJson = await gen.json();
+        if (!gen.ok) throw new Error(genJson.error ?? "Could not generate game");
+        config = genJson.config as GameConfig;
+        configCache.current.set(cacheKey, config);
+      }
 
       setStep("token");
+      toast({ id: toastId, kind: "pending", title: `Launching $${config.ticker}`, description: "Deploying your token on Monad…" });
       const fd = new FormData();
       fd.append("image", image.blob, "hero");
       fd.append("config", JSON.stringify(config));
@@ -70,9 +86,19 @@ export function CreateForm() {
       }
 
       setStep("publish");
+      configCache.current.delete(cacheKey);
+      toast({
+        id: toastId,
+        kind: "success",
+        title: `$${launchJson.ticker} is live on Monad`,
+        description: `${launchJson.tokenName} · block ${launchJson.blockNumber}`,
+        href: explorerTx(launchJson.txHash),
+      });
       router.push(`/game/${launchJson.id}?new=1`);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg);
+      toast({ id: toastId, kind: "error", title: "Launch failed", description: msg });
       setStep("idle");
     }
   }

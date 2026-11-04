@@ -18,15 +18,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <header className="sticky top-0 z-10 border-b-[3px] border-ink bg-banana">
             <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-              <Link href="/" className="font-[family-name:var(--font-display)] text-2xl font-black tracking-tight">
-                REACHY<span className="text-hot">.</span>
-              </Link>
+              <div className="flex items-center gap-4">
+                <Link href="/" className="font-[family-name:var(--font-display)] text-2xl font-black tracking-tight">
+                  REACHY<span className="text-hot">.</span>
+                </Link>
+                <nav className="flex gap-3 text-sm font-bold">
+                  <Link href="/leaderboard" className="hover:underline">🏆<span className="hidden sm:inline"> Leaderboard</span></Link>
+                  <Link href="/activity" className="hover:underline">📜<span className="hidden sm:inline"> Activity</span></Link>
+                </nav>
+              </div>
               <ConnectButton />
             </div>
           </header>
           <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
           <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs opacity-70">
-            Monad testnet only. Tokens have no value. No sell function. Play responsibly, degen.
+            Monad testnet only. Tokens have no value. Play responsibly, degen.
           </footer>
         </Providers>
       </body>

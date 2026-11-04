@@ -4,11 +4,14 @@ import { normalizeConfig, type GameConfig, type GameType } from "../game-config"
 
 const SYSTEM = `You turn a one-line meme game idea into a JSON game config. Reply with ONE JSON object only, no prose.
 Schema:
-{"gameType":"flappy|runner|dodge","title":string<=40,"ticker":3-6 uppercase letters,"tokenName":string<=48,
-"tagline":string<=80,"scoreLabel":string<=24,"gameOverText":string<=32,"obstacleLabel":string<=16,
+{"gameType":"flappy|runner|dodge|whack|snake|breakout|shooter","title":string<=40,"ticker":3-6 uppercase letters,
+"tokenName":string<=48,"tagline":string<=80,"scoreLabel":string<=24,"gameOverText":string<=32,"obstacleLabel":string<=16,
 "goodItemLabel":string<=16,"colors":{"bg":"#hex","fg":"#hex","accent":"#hex"},
 "difficulty":{"speed":0.6-1.8,"gravity":0.6-1.6,"spawnRate":0.6-1.8}}
-Pick gameType: flappy = flying/floating/bouncing ideas, runner = running/chasing/escaping, dodge = catching or avoiding falling things.
+Pick gameType: flappy = flying/floating/flapping, runner = running/chasing/escaping, dodge = catching or avoiding
+falling things, whack = popping up/bonking/smacking, snake = eating/growing/slithering, breakout = bouncing a ball/
+smashing bricks or walls, shooter = space/aliens/shooting/lasers.
+tokenName must be a punchy, original coin name that is NOT just the title plus "Coin" (e.g. "Bananaverse Inu").
 Tone: degen, funny, short. Bright flat colors with readable fg on bg.
 Never use existing brands, trademarked characters, or real people's names.`;
 
@@ -71,6 +74,9 @@ function extractJson(text: string): string {
   return text.slice(start, end + 1);
 }
 
+const PREFIXES = ["Baby", "Based", "Turbo", "Mega", "Lil", "Giga", "Sir", "Captain", "Degen", "Moon"];
+const SUFFIXES = ["Inu", "Coin", "Cash", "Classic", "Supreme", "Max", "Reloaded", "Gold", "Wif Hat", "Army"];
+
 const PALETTES = [
   { bg: "#ffe066", fg: "#222222", accent: "#ff6b6b" },
   { bg: "#a0e7e5", fg: "#1b1b3a", accent: "#ff5d8f" },
@@ -82,11 +88,19 @@ const PALETTES = [
 /** Deterministic, offline config so demos never block on the LLM. */
 export function heuristicConfig(prompt: string, overrides?: { gameType?: GameType; ticker?: string }): GameConfig {
   const p = prompt.toLowerCase();
-  const gameType: GameType = /fly|flap|float|bounce|jump over|sky|bird/.test(p)
-    ? "flappy"
-    : /catch|dodge|fall|rain|drop|collect/.test(p)
-      ? "dodge"
-      : "runner";
+  const gameType: GameType = /shoot|space|alien|invader|laser|blast|rocket|ufo/.test(p)
+    ? "shooter"
+    : /whack|bonk|smack|pop(s|ping)? (up|out)|hole|mole/.test(p)
+      ? "whack"
+      : /snake|slither|grow|tail|eat(s|ing)?\b/.test(p)
+        ? "snake"
+        : /brick|break|paddle|bounce|smash|wall/.test(p)
+          ? "breakout"
+          : /fly|flap|float|sky|bird/.test(p)
+            ? "flappy"
+            : /catch|dodge|fall|rain|drop|collect/.test(p)
+              ? "dodge"
+              : "runner";
   const words = prompt.replace(/[^a-zA-Z ]/g, " ").split(/\s+/).filter((w) => w.length > 2);
   const hero = words[0] ?? "Degen";
   const STOP =
@@ -95,12 +109,21 @@ export function heuristicConfig(prompt: string, overrides?: { gameType?: GameTyp
   const hash = [...prompt].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
   const cap = (s: string) => s[0].toUpperCase() + s.slice(1).toLowerCase();
   const title = `${cap(hero)} vs ${cap(thing)}`;
+  // Random (not prompt-hashed) so the same prompt twice gives different coins.
+  const pick = <T,>(xs: T[]) => xs[Math.floor(Math.random() * xs.length)];
+  const nameStyles = [
+    () => `${cap(hero)} ${pick(SUFFIXES)}`,
+    () => `${pick(PREFIXES)} ${cap(hero)}`,
+    () => `${cap(thing)}${pick(["verse", "mania", "fi", "chad", "pump"])} ${pick(SUFFIXES)}`,
+    () => `${pick(PREFIXES)} ${cap(thing)} ${pick(SUFFIXES)}`,
+  ];
+  const tokenName = pick(nameStyles)();
   return normalizeConfig(
     {
       gameType,
       title,
       ticker: (hero.slice(0, 3) + thing.slice(0, 2)).toUpperCase(),
-      tokenName: `${cap(hero)} ${cap(thing)} Coin`,
+      tokenName,
       tagline: `${cap(hero)} will never catch the ${thing.toLowerCase()}.`,
       scoreLabel: gameType === "runner" ? "Meters" : `${cap(thing)}s`,
       gameOverText: "you got rugged",

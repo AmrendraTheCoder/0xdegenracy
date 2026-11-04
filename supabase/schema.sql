@@ -22,3 +22,5 @@ alter table public.games enable row level security;
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('game-images', 'game-images', true, 2097152, array['image/png','image/jpeg','image/webp'])
 on conflict (id) do nothing;
+
+-- v2 tables: see migrations/002_events.sql (run it after this file).

@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 // Import `injected` from the root, not "wagmi/connectors": that barrel pulls in every SDK connector.
 import { createConfig, http, injected, WagmiProvider } from "wagmi";
 import { monadTestnet } from "@/lib/chain";
+import { Toaster } from "@/components/Toaster";
 
 export const wagmiConfig = createConfig({
   chains: [monadTestnet],
@@ -23,7 +24,9 @@ export function Providers({ children }: { children: ReactNode }) {
   const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false } } }));
   return (
     <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+      <QueryClientProvider client={qc}>
+        <Toaster>{children}</Toaster>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }

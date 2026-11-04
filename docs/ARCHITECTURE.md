@@ -123,6 +123,24 @@ service-role key can touch it.
 | GET | `/api/games/:id` | — | game record (this is the token's on-chain `configURI`) |
 | GET | `/api/images/:name` | — | dev-only local image serving |
 
+### v2: sell, leaderboard, prize pool
+
+- **GameToken** buys and sells along the same linear bonding curve. Buy costs round up and sell
+  proceeds round down, so the `reserve` always covers selling the whole supply back. A 1,000-run
+  fuzz test of random buy/sell sequences checks this. The fee is 2% of each trade's MON value: 1% to
+  the creator, 1% to the PrizePool.
+- **PrizePool** (deployed by the factory) records each trader's MON volume per UTC day and keeps the
+  day's top 10 sorted on-chain, using one storage slot per entry. `settle(day)` is permissionless
+  once the day is over. It pays 25/18/15/12/10/8/6/4/1/1% and rolls unfilled ranks into the next
+  day. A failed payout becomes `claimable`. Volume is on-chain, so it can't be faked, and wash
+  trading loses money (2% fee per trade, at most 25% of a pool back).
+- **events table** is the persistent log behind `/activity`, the price chart and error tracking.
+  The browser posts only a tx hash to `/api/trades`; the server reads the receipt and records only
+  Bought/Sold events from tokens the factory deployed. Ids are `txHash:logIndex`, so re-posting a
+  transaction is harmless.
+- **Token names** are unique: `/api/launch` changes the name or ticker until neither matches an
+  existing game.
+
 ### Contracts
 
 `GameToken` mints 1B tokens to itself. Price per whole token is `P0 + K·sold`, with

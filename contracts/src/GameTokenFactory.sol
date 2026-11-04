@@ -2,8 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {GameToken} from "./GameToken.sol";
+import {PrizePool} from "./PrizePool.sol";
 
-/// @title GameTokenFactory — deploys one GameToken per Reachy game.
+/// @title GameTokenFactory — deploys one GameToken per Reachy game and owns the shared PrizePool.
 /// @notice Permissionless: anyone can launch. The Reachy backend calls `launch` from a platform wallet
 ///         so creators need no wallet; it passes the creator's address when they connected one.
 contract GameTokenFactory {
@@ -13,6 +14,7 @@ contract GameTokenFactory {
     ///         1e9 * 1e8 + 1 * 1e9^2 / 2 = 0.1 MON + 0.5 MON.
     uint256 public constant SLOPE = 1;
 
+    PrizePool public immutable prizePool;
     address[] public tokens;
     mapping(address => bool) public isGameToken;
 
@@ -26,7 +28,11 @@ contract GameTokenFactory {
         uint256 gameId
     );
 
-    /// @param creator Receives the 1% buy fee. Pass address(0) to use msg.sender.
+    constructor() {
+        prizePool = new PrizePool(address(this));
+    }
+
+    /// @param creator Receives the 1% creator fee. Pass address(0) to use msg.sender.
     function launch(
         string calldata name,
         string calldata symbol,
@@ -39,7 +45,9 @@ contract GameTokenFactory {
         if (creator == address(0)) creator = msg.sender;
 
         uint256 gameId = tokens.length;
-        token = address(new GameToken(name, symbol, imageURI, configURI, creator, gameId, BASE_PRICE, SLOPE));
+        token = address(
+            new GameToken(name, symbol, imageURI, configURI, creator, gameId, BASE_PRICE, SLOPE, address(prizePool))
+        );
         tokens.push(token);
         isGameToken[token] = true;
 

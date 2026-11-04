@@ -31,6 +31,8 @@ const Env = z.object({
   SUPABASE_BUCKET: z.string().default("game-images"),
 
   APP_URL: z.string().url().default("http://localhost:3000"),
+  // Vercel Cron sends `Authorization: Bearer $CRON_SECRET` to /api/cron/settle.
+  CRON_SECRET: z.string().optional(),
   LAUNCHES_ENABLED: z
     .string()
     .default("true")

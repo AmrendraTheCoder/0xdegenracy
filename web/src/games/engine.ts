@@ -15,7 +15,13 @@ export type Input = {
   axis: number;
   /** Logical x of the pointer while held, else null (dodge drag). */
   pointerX: number | null;
+  /** Edge-triggered: logical position of a tap this frame (whack-a-mole). */
+  tap: { x: number; y: number } | null;
+  /** Edge-triggered: arrow key / WASD / swipe direction this frame (snake). */
+  dir: Dir | null;
 };
+
+export type Dir = "up" | "down" | "left" | "right";
 
 export type GameApi = {
   cfg: GameConfig;
@@ -61,7 +67,8 @@ export function runGame(opts: RunOptions): () => void {
     img.src = opts.spriteUrl;
   }
 
-  const input: Input = { tapped: false, duck: false, axis: 0, pointerX: null };
+  const input: Input = { tapped: false, duck: false, axis: 0, pointerX: null, tap: null, dir: null };
+  let swipeStart: { x: number; y: number } | null = null;
   const keys = new Set<string>();
   let tilt = 0;
   let phase: Phase = "ready";
@@ -120,6 +127,10 @@ export function runGame(opts: RunOptions): () => void {
     const rect = canvas.getBoundingClientRect();
     return ((clientX - rect.left) / rect.width) * W;
   };
+  const toLogicalY = (clientY: number) => {
+    const rect = canvas.getBoundingClientRect();
+    return ((clientY - rect.top) / rect.height) * H;
+  };
   const press = () => {
     if (phase === "ready") {
       phase = "playing";
@@ -135,18 +146,44 @@ export function runGame(opts: RunOptions): () => void {
   const onPointerDown = (e: PointerEvent) => {
     e.preventDefault();
     canvas.setPointerCapture?.(e.pointerId);
-    input.pointerX = toLogicalX(e.clientX);
+    const x = toLogicalX(e.clientX);
+    const y = toLogicalY(e.clientY);
+    input.pointerX = x;
+    swipeStart = { x, y };
+    const wasPlaying = phase === "playing";
     press();
+    if (wasPlaying) input.tap = { x, y }; // the tap that starts a run is not a game tap
   };
   const onPointerMove = (e: PointerEvent) => {
-    if (input.pointerX !== null) input.pointerX = toLogicalX(e.clientX);
+    if (input.pointerX === null) return;
+    const x = toLogicalX(e.clientX);
+    const y = toLogicalY(e.clientY);
+    input.pointerX = x;
+    // Swipe: emit a direction once the finger has moved far enough, then re-anchor.
+    if (swipeStart) {
+      const dx = x - swipeStart.x;
+      const dy = y - swipeStart.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > 28) {
+        input.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up";
+        swipeStart = { x, y };
+      }
+    }
   };
-  const onPointerUp = () => (input.pointerX = null);
+  const onPointerUp = () => {
+    input.pointerX = null;
+    swipeStart = null;
+  };
+  const KEY_DIR: Record<string, Dir> = {
+    ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down",
+    ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right",
+  };
   const onKeyDown = (e: KeyboardEvent) => {
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
     if (e.repeat) return;
     keys.add(e.code);
+    if (KEY_DIR[e.code]) input.dir = KEY_DIR[e.code];
     if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") press();
+    else if (phase !== "playing" && KEY_DIR[e.code]) press(); // any arrow starts snake etc.
   };
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code);
   const onTilt = (e: DeviceOrientationEvent) => {
@@ -175,6 +212,8 @@ export function runGame(opts: RunOptions): () => void {
 
     if (phase === "playing") game.update(dt, input);
     input.tapped = false;
+    input.tap = null;
+    input.dir = null;
 
     // draw
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
