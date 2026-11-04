@@ -64,6 +64,7 @@ export const breakout: GameFactory = (api) => {
           ball.vy = -v * Math.cos(off * 1.05);
           ball.y = PY - BR - 1;
           api.shake(2);
+          api.sfx("jump");
         }
 
         for (const b of bricks) {
@@ -71,6 +72,8 @@ export const breakout: GameFactory = (api) => {
           b.alive = false;
           api.addScore(1);
           api.shake(3);
+          api.sfx("bonk");
+          api.burst(b.x + BW / 2, b.y + BH / 2, b.row % 2 ? api.cfg.colors.accent : api.cfg.colors.fg, 12, 180);
           // reflect on the axis of least penetration
           const cx = Math.max(b.x, Math.min(ball.x, b.x + BW - 4));
           const cy = Math.max(b.y, Math.min(ball.y, b.y + BH));
@@ -83,10 +86,14 @@ export const breakout: GameFactory = (api) => {
       if (ball.y > H + BR) {
         lives--;
         api.shake(10);
-        if (lives <= 0) return api.end();
+        api.sfx("hit");
+        if (lives <= 0) return api.end(ball.x, H - 20);
+        api.pop(W / 2, H / 2 + 60, `${lives} ♥ LEFT`, api.cfg.colors.accent);
         ball.stuck = true;
       }
       if (bricks.every((b) => !b.alive)) {
+        api.sfx("start");
+        api.pop(W / 2, H / 2, `WAVE ${wave + 2}!`, api.cfg.colors.accent);
         wave++;
         buildWave();
         ball.stuck = true;
@@ -96,14 +103,25 @@ export const breakout: GameFactory = (api) => {
       const { fg, accent, bg } = api.cfg.colors;
       for (const b of bricks) {
         if (!b.alive) continue;
-        g.fillStyle = b.row % 2 ? accent : fg;
-        g.fillRect(b.x, b.y, BW - 4, BH);
+        const base = b.row % 2 ? accent : fg;
+        api.rrect(g, b.x, b.y, BW - 4, BH, 5, base);
+        g.fillStyle = api.shade(base, 0.3);
+        g.fillRect(b.x + 4, b.y + 3, BW - 12, 4); // bevel highlight
       }
       api.label(g, api.cfg.obstacleLabel.toUpperCase(), W / 2, TOP - 14, 12);
-      g.fillStyle = fg;
-      g.fillRect(paddleX - PW / 2, PY, PW, PH);
-      g.fillStyle = bg;
-      g.fillRect(paddleX - PW / 2 + 4, PY + 4, PW - 8, PH - 8);
+      api.rrect(g, paddleX - PW / 2, PY, PW, PH, 7, fg);
+      api.rrect(g, paddleX - PW / 2 + 4, PY + 3, PW - 8, PH - 8, 4, bg);
+      // motion trail behind the face-ball
+      if (!ball.stuck) {
+        g.fillStyle = api.shade(accent, 0.3);
+        for (let i = 1; i <= 3; i++) {
+          g.globalAlpha = 0.25 / i;
+          g.beginPath();
+          g.arc(ball.x - (ball.vx * i) / 60, ball.y - (ball.vy * i) / 60, BR, 0, Math.PI * 2);
+          g.fill();
+        }
+        g.globalAlpha = 1;
+      }
       api.drawHero(g, ball.x, ball.y, BR);
       api.label(g, "♥".repeat(Math.max(0, lives)), W - 50, 30, 22, accent);
       if (ball.stuck) api.label(g, "TAP OR MOVE TO SERVE", W / 2, PY - 60, 14);

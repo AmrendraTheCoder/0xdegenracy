@@ -43,8 +43,8 @@ export default async function GamePage({ params }: Props) {
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-black leading-none sm:text-4xl">{c.title}</h1>
           <p className="mt-1 text-sm">{c.tagline}</p>
         </div>
-        <GamePlayer config={c} imageUrl={game.image_url} />
-        {game.token_address && <PriceChart gameId={game.id} launchedAt={game.created_at} accent={c.colors.accent} />}
+        <GamePlayer config={c} imageUrl={game.image_url} gameId={game.id} />
+        {game.token_address && <PriceChart gameId={game.id} launchedAt={game.created_at} accent={c.colors.accent} token={game.token_address as Address} />}
       </section>
       <div className="space-y-4">
         {game.token_address ? (

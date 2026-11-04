@@ -46,11 +46,18 @@ export const whack: GameFactory = (api) => {
           h.up = Math.min(h.up, 0.12);
           if (h.bad) {
             api.shake(14);
-            api.end();
+            api.sfx("hit");
+            api.burst(h.x, h.y, "#ff9f1c", 30, 340);
+            api.end(h.x, h.y);
           } else {
             api.addScore(1);
             api.shake(4);
+            api.sfx("bonk");
+            api.burst(h.x, h.y - 10, api.cfg.colors.accent, 14, 200);
+            api.pop(h.x, h.y - 60, "+1", api.cfg.colors.accent);
           }
+        } else {
+          api.burst(x, y, api.shade(api.cfg.colors.fg, 0.3), 4, 80); // whiff
         }
       }
 
@@ -62,15 +69,23 @@ export const whack: GameFactory = (api) => {
           lives--; // the face got away
           flash = 0.25;
           api.shake(8);
-          if (lives <= 0) api.end();
+          api.sfx("hit");
+          api.pop(h.x, h.y - 40, "MISSED", api.cfg.colors.fg);
+          if (lives <= 0) api.end(h.x, h.y);
         }
       }
       flash = Math.max(0, flash - dt);
     },
     draw(g) {
       const { fg, accent } = api.cfg.colors;
+      // grassy field behind the holes
+      api.rrect(g, 12, 150, W - 24, 430, 24, api.shade(api.cfg.colors.bg, -0.08));
       for (const h of holes) {
-        // hole
+        // dirt mound rim, then the dark hole
+        g.fillStyle = api.shade(fg, 0.35);
+        g.beginPath();
+        g.ellipse(h.x, h.y + 28, R + 14, 22, 0, 0, Math.PI * 2);
+        g.fill();
         g.fillStyle = fg;
         g.beginPath();
         g.ellipse(h.x, h.y + 26, R + 6, 16, 0, 0, Math.PI * 2);

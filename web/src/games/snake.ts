@@ -44,33 +44,52 @@ export const snake: GameFactory = (api) => {
         const ate = head.x === food.x && head.y === food.y;
         const tail = ate ? body : body.slice(0, -1);
         if (head.x < 0 || head.y < 0 || head.x >= COLS || head.y >= ROWS || tail.some((b) => b.x === head.x && b.y === head.y)) {
-          api.end();
+          api.sfx("hit");
+          api.end(body[0].x * CELL + CELL / 2, TOP + body[0].y * CELL + CELL / 2);
           return;
         }
         body = [head, ...tail];
         if (ate) {
+          const fx = food.x * CELL + CELL / 2;
+          const fy = TOP + food.y * CELL + CELL / 2;
           api.addScore(1);
           api.shake(3);
+          api.sfx("score");
+          api.burst(fx, fy, api.cfg.colors.accent, 12, 160);
+          api.pop(fx, fy - 18, "+1", api.cfg.colors.accent);
           food = place();
         }
       }
     },
     draw(g) {
-      const { fg, accent } = api.cfg.colors;
+      const { fg, accent, bg } = api.cfg.colors;
+      // checkerboard play field
+      const light = api.shade(bg, 0.08);
+      const dark = api.shade(bg, -0.05);
+      for (let y = 0; y < ROWS; y++)
+        for (let x = 0; x < COLS; x++) {
+          g.fillStyle = (x + y) % 2 ? dark : light;
+          g.fillRect(x * CELL, TOP + y * CELL, CELL, CELL);
+        }
       g.strokeStyle = fg;
       g.lineWidth = 3;
       g.strokeRect(1.5, TOP - 1.5, W - 3, ROWS * CELL + 3);
-      // food
+      // food: pulsing glow
+      const pulse = 1 + Math.sin(performance.now() / 160) * 0.12;
+      g.save();
+      g.shadowColor = accent;
+      g.shadowBlur = 14;
       g.fillStyle = accent;
       g.beginPath();
-      g.arc(food.x * CELL + CELL / 2, TOP + food.y * CELL + CELL / 2, CELL / 2 - 2, 0, Math.PI * 2);
+      g.arc(food.x * CELL + CELL / 2, TOP + food.y * CELL + CELL / 2, (CELL / 2 - 2) * pulse, 0, Math.PI * 2);
       g.fill();
+      g.restore();
       api.label(g, api.cfg.goodItemLabel.toUpperCase(), food.x * CELL + CELL / 2, TOP + food.y * CELL - 6, 10);
-      // tail
-      g.fillStyle = fg;
+      // tail: rounded segments that fade toward the tip
       for (let i = body.length - 1; i > 0; i--) {
         const b = body[i];
-        g.fillRect(b.x * CELL + 2, TOP + b.y * CELL + 2, CELL - 4, CELL - 4);
+        const k = i / body.length;
+        api.rrect(g, b.x * CELL + 2, TOP + b.y * CELL + 2, CELL - 4, CELL - 4, 6, api.shade(fg, k * 0.35));
       }
       // head = the face, drawn a little larger than a cell
       const h = body[0];

@@ -41,6 +41,7 @@ export const shooter: GameFactory = (api) => {
       if (fireIn <= 0) {
         bullets.push({ x: shipX, y: SY - SR });
         fireIn = 0.28;
+        api.sfx("shoot");
       }
       for (const b of bullets) b.y -= 620 * dt;
       while (bullets.length && bullets[0].y < 90) bullets.shift();
@@ -78,6 +79,9 @@ export const shooter: GameFactory = (api) => {
           bullets.splice(i, 1);
           api.addScore(1);
           api.shake(3);
+          api.sfx("bonk");
+          api.burst(e.x + EW / 2, e.y + EH / 2, api.cfg.colors.accent, 14, 200);
+          api.burst(e.x + EW / 2, e.y + EH / 2, api.cfg.colors.fg, 6, 140);
         }
       }
 
@@ -85,18 +89,25 @@ export const shooter: GameFactory = (api) => {
       invuln = Math.max(0, invuln - dt);
       const hitByShot = shots.findIndex((s) => (s.x - shipX) ** 2 + (s.y - SY) ** 2 < (SR + 3) ** 2);
       const invaded = alive.some((e) => e.alive && (e.y + EH >= SY - SR || circleRect(shipX, SY, SR, e.x, e.y, EW, EH)));
-      if (invaded) return api.end();
+      if (invaded) {
+        api.sfx("hit");
+        return api.end(shipX, SY);
+      }
       if (hitByShot >= 0 && invuln === 0) {
         shots.splice(hitByShot, 1);
         lives--;
         invuln = 1.2;
         api.shake(12);
-        if (lives <= 0) return api.end();
+        api.sfx("hit");
+        api.burst(shipX, SY, api.cfg.colors.fg, 14, 200);
+        if (lives <= 0) return api.end(shipX, SY);
       }
 
       if (enemies.every((e) => !e.alive)) {
         wave++;
         api.addScore(5); // wave bonus
+        api.sfx("start");
+        api.pop(W / 2, H / 2, `WAVE ${wave + 1} · +5`, api.cfg.colors.accent);
         spawnWave();
       }
     },

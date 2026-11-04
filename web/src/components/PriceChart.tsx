@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { explorerTx } from "@/lib/chain";
+import type { Address } from "viem";
+import { useReadContract } from "wagmi";
+import { gameTokenAbi } from "@/lib/abi";
+import { explorerTx, monadTestnet } from "@/lib/chain";
 import { fmtMon, fmtPrice, fmtTokens, short, timeAgo } from "@/lib/format";
 import { TRADE_EVENT } from "@/lib/useTx";
 
@@ -17,9 +20,11 @@ type Trade = {
 const BASE_PRICE = 1e8; // GameTokenFactory.BASE_PRICE
 
 /** Price-over-time step chart from verified trades, plus the latest trades as on-chain proof. */
-export function PriceChart({ gameId, launchedAt, accent }: { gameId: string; launchedAt: string; accent: string }) {
+export function PriceChart({ gameId, launchedAt, accent, token }: { gameId: string; launchedAt: string; accent: string; token: Address }) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // The live on-chain price anchors "now", so the chart is right even for trades made before logging existed.
+  const live = useReadContract({ address: token, abi: gameTokenAbi, functionName: "currentPrice", chainId: monadTestnet.id, query: { refetchInterval: 5000 } });
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/games/${gameId}/trades`, { cache: "no-store" }).catch(() => null);
@@ -41,7 +46,7 @@ export function PriceChart({ gameId, launchedAt, accent }: { gameId: string; lau
   const pts = [
     { t: new Date(launchedAt).getTime(), p: BASE_PRICE },
     ...trades.map((tr) => ({ t: new Date(tr.created_at).getTime(), p: Number(tr.data.newPrice) })),
-    { t: Date.now(), p: trades.length ? Number(trades.at(-1)!.data.newPrice) : BASE_PRICE },
+    { t: Date.now(), p: live.data !== undefined ? Number(live.data) : trades.length ? Number(trades.at(-1)!.data.newPrice) : BASE_PRICE },
   ];
   const W = 320;
   const H = 120;
