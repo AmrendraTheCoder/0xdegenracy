@@ -145,7 +145,7 @@ export const shooter: GameFactory = (api) => {
         g.fill();
         api.drawHero(g, shipX, SY, SR);
       }
-      api.label(g, "♥".repeat(Math.max(0, lives)), W - 50, 30, 22, accent);
+      api.hearts(g, W - 14, 29, Math.max(0, lives));
     },
   };
 };

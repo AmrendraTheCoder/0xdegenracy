@@ -81,10 +81,16 @@ export const runner: GameFactory = (api) => {
         g.ellipse(hl.x + 70, GROUND, 90, hl.h, 0, Math.PI, 0);
         g.fill();
       }
-      g.fillStyle = fg;
+      // ground: a darker band of the scene colour with a bright edge and scrolling road marks
+      const groundFill = g.createLinearGradient(0, GROUND, 0, H);
+      groundFill.addColorStop(0, api.shade(bg, -0.28));
+      groundFill.addColorStop(1, api.shade(bg, -0.45));
+      g.fillStyle = groundFill;
       g.fillRect(0, GROUND, W, H - GROUND);
+      g.fillStyle = fg;
+      g.fillRect(0, GROUND, W, 4);
       g.fillStyle = accent;
-      for (let x = -groundOffset; x < W; x += 40) g.fillRect(x, GROUND + 14, 20, 6);
+      for (let x = -groundOffset; x < W; x += 40) api.rrect(g, x, GROUND + 22, 22, 6, 3, accent);
       for (const o of obs) {
         api.rrect(g, o.x, o.y, o.w, o.h, 8, o.flying ? accent : fg, o.flying ? fg : accent);
         if (!o.flying) {

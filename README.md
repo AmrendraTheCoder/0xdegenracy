@@ -1,4 +1,4 @@
-# Reachy
+# 0xdegenracy
 
 **Every coin ships with a game.** Upload a face, type a dumb game idea, and get a playable meme game
 plus an ERC-20 memecoin with that face on it, live on Monad testnet in under a minute.
@@ -70,7 +70,7 @@ the offline generator.
 
 ## Local inference with OmniRoute
 
-Reachy sends every LLM call to [OmniRoute](https://github.com/cheaper-inference/OmniRoute), a local
+0xdegenracy sends every LLM call to [OmniRoute](https://github.com/cheaper-inference/OmniRoute), a local
 OpenAI-compatible gateway, so you can swap models or providers without code changes.
 
 ```bash

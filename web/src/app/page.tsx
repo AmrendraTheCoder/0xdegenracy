@@ -4,6 +4,7 @@ import { GameCard } from "@/components/GameCard";
 import { getStore } from "@/lib/server/store";
 import { GAME_META } from "@/games";
 import { GAME_TYPES } from "@/lib/game-config";
+import { Icon } from "@/components/ui/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function Home() {
         <div className="flex flex-wrap gap-2">
           {GAME_TYPES.map((t) => (
             <span key={t} className="brut bg-white px-3 py-1.5 text-sm font-bold">
-              {GAME_META[t].emoji} {GAME_META[t].label}
+              {GAME_META[t].label}
             </span>
           ))}
         </div>
@@ -50,8 +51,8 @@ export default async function Home() {
 
       <section>
         <div className="mb-3 flex items-baseline justify-between gap-2">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-black">Fresh launches 🔥</h2>
-          <Link href="/leaderboard" className="text-sm font-bold underline">Daily prize pool →</Link>
+          <h2 className="font-[family-name:var(--font-display)] text-2xl font-black">Fresh launches</h2>
+          <Link href="/leaderboard" className="inline-flex items-center gap-1 text-sm font-bold underline">Daily prize pool <Icon name="arrowRight" size={14} /></Link>
         </div>
         {games.length === 0 ? (
           <p className="brut bg-white p-4 text-sm">No games yet. Be the first degen.</p>

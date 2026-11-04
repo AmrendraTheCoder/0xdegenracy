@@ -2,6 +2,7 @@ import { explorerAddress, explorerTx } from "@/lib/chain";
 import { short } from "@/lib/format";
 import { CopyButton } from "./CopyButton";
 import { cn } from "./cn";
+import { Icon } from "./Icon";
 
 export type AddressLinkProps = {
   /** An address or a transaction hash. */
@@ -21,7 +22,7 @@ export function AddressLink({ value, kind = "address", label, copy, className }:
     <span className={cn("inline-flex items-center gap-1.5", className)}>
       <a href={href} target="_blank" rel="noreferrer" title={value} className="font-mono font-bold underline decoration-2 underline-offset-2 hover:bg-banana">
         {label ?? short(value)}
-        <span aria-hidden> ↗</span>
+        <Icon name="external" size={13} className="ml-0.5" />
         <span className="sr-only"> (view {kind === "tx" ? "transaction" : "address"} on explorer, opens in a new tab)</span>
       </a>
       {copy && <CopyButton value={value} label={`Copy ${kind === "tx" ? "transaction hash" : "address"}`} />}

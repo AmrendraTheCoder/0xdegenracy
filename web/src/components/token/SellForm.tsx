@@ -24,7 +24,7 @@ export function SellForm({ ticker, pct, onPctChange, heldWhole, sellAmount, netO
       <PresetGroup label="Share of your bag to sell" presets={SELL_PRESETS.map((p) => ({ label: `${p}%`, value: p }))} value={pct} onSelect={onPctChange} disabled={disabled} />
       <p className="text-sm" aria-live="polite" aria-atomic="true">
         Sell <b>{fmtTokens(sellAmount)}</b>
-        {heldWhole !== undefined && <> of {fmtTokens(heldWhole)}</>} ${ticker} → ≈{" "}
+        {heldWhole !== undefined && <> of {fmtTokens(heldWhole)}</>} ${ticker} for ≈{" "}
         {quoteLoading ? <Skeleton className="inline-block h-3.5 w-14 align-middle" /> : <b>{fmtMon(netOut)}</b>} MON{" "}
         <span className="whitespace-nowrap text-ink/70">(2% fee incl., 5% slippage)</span>
       </p>

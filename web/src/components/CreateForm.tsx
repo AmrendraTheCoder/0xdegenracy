@@ -8,6 +8,7 @@ import { GAME_META } from "@/games";
 import { prepareImage } from "@/lib/image";
 import { explorerTx } from "@/lib/chain";
 import { useToast } from "./Toaster";
+import { Icon } from "./ui/Icon";
 
 type Step = "idle" | "config" | "token" | "publish";
 const STEPS: { key: Exclude<Step, "idle">; label: string }[] = [
@@ -175,12 +176,20 @@ export function CreateForm() {
       </button>
 
       {busy && (
-        <ol className="mt-4 space-y-1 text-sm font-bold">
+        <ol className="mt-4 space-y-1.5 text-sm font-bold" aria-live="polite">
           {STEPS.map((s, i) => {
             const cur = STEPS.findIndex((x) => x.key === step);
             return (
-              <li key={s.key} className={i <= cur ? "" : "opacity-40"}>
-                {i < cur ? "✅" : i === cur ? "⏳" : "⬜"} {s.label}
+              <li key={s.key} className={i <= cur ? "flex items-center gap-2" : "flex items-center gap-2 opacity-40"}>
+                {i < cur ? (
+                  <Icon name="circleCheck" size={18} className="text-up" />
+                ) : i === cur ? (
+                  <span aria-hidden className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-[3px] border-ink border-r-transparent motion-reduce:animate-none" />
+                ) : (
+                  <Icon name="circle" size={18} />
+                )}
+                <span>{s.label}</span>
+                <span className="sr-only">{i < cur ? "(done)" : i === cur ? "(in progress)" : "(pending)"}</span>
               </li>
             );
           })}

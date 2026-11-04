@@ -88,7 +88,7 @@ export const breakout: GameFactory = (api) => {
         api.shake(10);
         api.sfx("hit");
         if (lives <= 0) return api.end(ball.x, H - 20);
-        api.pop(W / 2, H / 2 + 60, `${lives} ♥ LEFT`, api.cfg.colors.accent);
+        api.pop(W / 2, H / 2 + 60, `${lives} ${lives === 1 ? "LIFE" : "LIVES"} LEFT`, api.cfg.colors.accent);
         ball.stuck = true;
       }
       if (bricks.every((b) => !b.alive)) {
@@ -123,7 +123,7 @@ export const breakout: GameFactory = (api) => {
         g.globalAlpha = 1;
       }
       api.drawHero(g, ball.x, ball.y, BR);
-      api.label(g, "♥".repeat(Math.max(0, lives)), W - 50, 30, 22, accent);
+      api.hearts(g, W - 14, 29, Math.max(0, lives));
       if (ball.stuck) api.label(g, "TAP OR MOVE TO SERVE", W / 2, PY - 60, 14);
     },
   };

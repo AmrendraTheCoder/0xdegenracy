@@ -44,7 +44,27 @@ export type GameApi = {
   rrect(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, fill: string, stroke?: string): void;
   /** Darken (pct < 0) or lighten (pct > 0) a hex color. */
   shade(hex: string, pct: number): string;
+  /** Draws `lives` filled hearts (of `max`), right-aligned so the last one ends at x. */
+  hearts(g: CanvasRenderingContext2D, x: number, y: number, lives: number, max?: number): void;
 };
+
+/** A vector heart centred on (x, y). */
+export function drawHeart(g: CanvasRenderingContext2D, x: number, y: number, size: number, fill: string, stroke = "#141414") {
+  const s = size / 2;
+  g.save();
+  g.translate(x, y);
+  g.beginPath();
+  g.moveTo(0, s * 0.95);
+  g.bezierCurveTo(-s * 1.25, s * 0.05, -s * 0.85, -s * 1.05, 0, -s * 0.4);
+  g.bezierCurveTo(s * 0.85, -s * 1.05, s * 1.25, s * 0.05, 0, s * 0.95);
+  g.closePath();
+  g.fillStyle = fill;
+  g.fill();
+  g.lineWidth = 2;
+  g.strokeStyle = stroke;
+  g.stroke();
+  g.restore();
+}
 
 export type GameInstance = {
   update(dt: number, input: Input): void;
@@ -64,6 +84,8 @@ export type RunOptions = {
   bestKey?: string;
   /** prefers-reduced-motion: no screen shake or white flashes. */
   reducedMotion?: boolean;
+  /** One-line controls hint shown on the start screen. */
+  hint?: string;
   onGameOver?: (score: number, best: number) => void;
   onStart?: () => void;
   onPhase?: (phase: Phase) => void;
@@ -201,6 +223,21 @@ export function runGame(opts: RunOptions): GameController {
   const bgTop = shade(cfg.colors.bg, 0.12);
   const bgBottom = shade(cfg.colors.bg, -0.14);
   const dotColor = shade(cfg.colors.bg, -0.07);
+  // Use the site's display font (self-hosted by next/font) so the game matches the page.
+  const FONT = (() => {
+    const fallback = 'ui-rounded, "Arial Black", system-ui, sans-serif';
+    try {
+      const fam = getComputedStyle(document.documentElement).getPropertyValue("--font-bricolage").trim();
+      return fam ? `${fam}, ${fallback}` : fallback;
+    } catch {
+      return fallback;
+    }
+  })();
+  const font = (size: number, weight = 800) => `${weight} ${size}px ${FONT}`;
+  // Soft vignette: darkens the edges so the play area reads as a lit stage.
+  const vignette = g.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.28)");
 
   const setPhase = (p: Phase) => {
     phase = p;
@@ -268,7 +305,7 @@ export function runGame(opts: RunOptions): GameController {
     },
     label(ctx, text, x, y, size, color = cfg.colors.fg) {
       ctx.fillStyle = color;
-      ctx.font = `900 ${size}px ui-rounded, "Arial Black", system-ui, sans-serif`;
+      ctx.font = font(size);
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, x, y);
@@ -299,6 +336,12 @@ export function runGame(opts: RunOptions): GameController {
       }
     },
     shade,
+    hearts(ctx, x, y, lives, max = 3) {
+      for (let i = 0; i < max; i++) {
+        const hx = x - (max - 1 - i) * 24 - 9;
+        drawHeart(ctx, hx, y, 18, i < lives ? cfg.colors.accent : "rgba(255,255,255,0.18)", i < lives ? "#141414" : "rgba(0,0,0,0.25)");
+      }
+    },
   };
 
   const reset = () => {
@@ -486,16 +529,12 @@ export function runGame(opts: RunOptions): GameController {
     }
     g.globalAlpha = 1;
 
-    // HUD (unshaken)
+    // ---- stage lighting + HUD (unshaken)
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.save();
-    g.shadowColor = "rgba(0,0,0,0.25)";
-    g.shadowOffsetY = 3;
-    api.label(g, `${Math.floor(score)}`, W / 2, 56, 52);
-    g.restore();
-    api.label(g, cfg.scoreLabel.toUpperCase(), W / 2, 92, 14);
-    if (best > 0) api.label(g, `BEST ${best}`, 50, 30, 13);
-    if (synth.isMuted()) api.label(g, "🔇", W / 2 + 120, 30, 16);
+    g.fillStyle = vignette;
+    g.fillRect(0, 0, W, H);
+
+    if (phase === "playing" || phase === "paused") hud();
 
     if (flash > 0) {
       g.fillStyle = `rgba(255,255,255,${flash})`;
@@ -503,29 +542,113 @@ export function runGame(opts: RunOptions): GameController {
       flash = Math.max(0, flash - dt * 1.5);
     }
 
-    if (phase === "ready") overlay(cfg.title, "TAP · SPACE · ENTER TO PLAY", `$${cfg.ticker}`, "P pause · R restart · M mute");
-    if (phase === "paused") overlay("PAUSED", "PRESS P OR TAP TO RESUME", `$${cfg.ticker}`, "R restart · M mute");
-    if (phase === "over")
-      overlay(cfg.gameOverText, `${Math.floor(score)} ${cfg.scoreLabel}${newBest ? " · NEW BEST!" : ""}`, `TAP OR SPACE TO RETRY · $${cfg.ticker}`, `BEST ${best}`);
+    if (phase === "ready") readyScreen(now);
+    if (phase === "paused") pausedScreen();
+    if (phase === "over") overScreen(now);
   };
 
-  function overlay(big: string, mid: string, small: string, hint: string) {
-    g.save();
-    g.shadowColor = "rgba(0,0,0,0.35)";
-    g.shadowBlur = 24;
-    g.shadowOffsetY = 8;
-    api.rrect(g, 24, H / 2 - 130, W - 48, 250, 22, "rgba(20,20,20,0.82)");
-    g.restore();
-    api.label(g, big.toUpperCase(), W / 2, H / 2 - 64, fitSize(big, 40), "#ffffff");
-    api.label(g, mid, W / 2, H / 2 - 6, fitSize(mid, 22), cfg.colors.accent);
-    api.label(g, small, W / 2, H / 2 + 42, 15, "#ffffff");
-    api.label(g, hint, W / 2, H / 2 + 82, 12, "rgba(255,255,255,0.6)");
+  /** Score in a dark pill at the top centre, best score top-left. Games draw their own lives top-right. */
+  function hud() {
+    const s = `${Math.floor(score)}`;
+    g.font = font(34);
+    const w = Math.max(96, g.measureText(s).width + 40);
+    api.rrect(g, W / 2 - w / 2, 14, w, 62, 18, "rgba(10,10,12,0.42)");
+    api.label(g, s, W / 2, 40, 34, "#ffffff");
+    api.label(g, cfg.scoreLabel.toUpperCase(), W / 2, 63, 10, "rgba(255,255,255,0.75)");
+    if (best > 0) {
+      const b = `BEST ${best}`;
+      g.font = font(11);
+      const bw = g.measureText(b).width + 18;
+      api.rrect(g, 14, 18, bw, 22, 11, "rgba(10,10,12,0.42)");
+      api.label(g, b, 14 + bw / 2, 29.5, 11, "rgba(255,255,255,0.9)");
+    }
   }
-  function fitSize(text: string, max: number) {
+
+  function scrim(alpha: number) {
+    g.fillStyle = `rgba(10,10,12,${alpha})`;
+    g.fillRect(0, 0, W, H);
+  }
+
+  function pill(text: string, cx: number, cy: number, bg: string, fg: string, size = 13) {
+    g.font = font(size);
+    const w = g.measureText(text).width + 24;
+    api.rrect(g, cx - w / 2, cy - size, w, size * 2, size, bg);
+    api.label(g, text, cx, cy + 0.5, size, fg);
+  }
+
+  /** Start screen: the uploaded face front and centre, title above, how to play below. */
+  function readyScreen(now: number) {
+    scrim(0.66);
+    api.label(g, cfg.title.toUpperCase(), W / 2, 104, fitSize(cfg.title, 38), "#ffffff");
+    pill(`$${cfg.ticker}`, W / 2, 144, cfg.colors.accent, "#141414");
+    const bob = opts.reducedMotion ? 0 : Math.sin(now / 420) * 7;
+    g.save();
+    g.globalAlpha = 0.25;
+    g.fillStyle = "#000";
+    g.beginPath();
+    g.ellipse(W / 2, H / 2 + 52, 50 - bob, 9, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+    api.drawHero(g, W / 2, H / 2 - 22 + bob, 60);
+    const pulse = opts.reducedMotion ? 1 : 0.65 + 0.35 * Math.sin(now / 260);
+    g.globalAlpha = pulse;
+    pill("TAP OR PRESS SPACE TO PLAY", W / 2, H / 2 + 92, "#ffffff", "#141414", 14);
+    g.globalAlpha = 1;
+    if (opts.hint) wrapLabel(opts.hint, W / 2, H / 2 + 128, 13, "rgba(255,255,255,0.85)");
+    api.label(g, "P  PAUSE    R  RESTART    M  MUTE", W / 2, H - 28, 10, "rgba(255,255,255,0.55)");
+  }
+
+  function pausedScreen() {
+    scrim(0.62);
+    api.label(g, "PAUSED", W / 2, H / 2 - 24, 44, "#ffffff");
+    api.label(g, "Tap or press P to resume", W / 2, H / 2 + 22, 15, "rgba(255,255,255,0.85)");
+    api.label(g, "R  RESTART    M  MUTE", W / 2, H / 2 + 56, 10, "rgba(255,255,255,0.55)");
+  }
+
+  /** Game over: a centred card with the score, a new-best flag and the retry prompt. */
+  function overScreen(now: number) {
+    scrim(0.55);
+    const top = H / 2 - 150;
+    g.save();
+    g.shadowColor = "rgba(0,0,0,0.45)";
+    g.shadowBlur = 30;
+    g.shadowOffsetY = 12;
+    api.rrect(g, 34, top, W - 68, 286, 24, "#ffffff");
+    g.restore();
+    api.rrect(g, 34, top, W - 68, 286, 24, "rgba(0,0,0,0)", "#141414");
+    api.label(g, cfg.gameOverText.toUpperCase(), W / 2, top + 46, fitSize(cfg.gameOverText, 30, W - 120), "#141414");
+    api.label(g, `${Math.floor(score)}`, W / 2, top + 116, 64, cfg.colors.accent === "#ffffff" ? "#141414" : shade(cfg.colors.accent, -0.15));
+    api.label(g, cfg.scoreLabel.toUpperCase(), W / 2, top + 158, 12, "rgba(20,20,20,0.6)");
+    if (newBest) pill("NEW BEST", W / 2, top + 190, cfg.colors.accent, "#141414", 12);
+    else api.label(g, `BEST ${best}`, W / 2, top + 190, 12, "rgba(20,20,20,0.6)");
+    const ready = performance.now() - overAt > 450;
+    g.globalAlpha = ready ? (opts.reducedMotion ? 1 : 0.7 + 0.3 * Math.sin(now / 260)) : 0.35;
+    pill("TAP OR SPACE TO RETRY", W / 2, top + 244, "#141414", "#ffffff", 13);
+    g.globalAlpha = 1;
+  }
+
+  /** Centered text that wraps onto at most two lines. */
+  function wrapLabel(text: string, x: number, y: number, size: number, color: string) {
+    g.font = font(size, 700);
+    const max = W - 60;
+    if (g.measureText(text).width <= max) return api.label(g, text, x, y, size, color);
+    const words = text.split(" ");
+    let line = "";
+    let i = 0;
+    for (; i < words.length; i++) {
+      const next = line ? `${line} ${words[i]}` : words[i];
+      if (g.measureText(next).width > max) break;
+      line = next;
+    }
+    api.label(g, line, x, y, size, color);
+    api.label(g, words.slice(i).join(" "), x, y + size + 6, size, color);
+  }
+
+  function fitSize(text: string, max: number, maxWidth = W - 70) {
     let size = max;
-    g.font = `900 ${size}px ui-rounded, "Arial Black", system-ui, sans-serif`;
+    g.font = font(size);
     const width = g.measureText(text.toUpperCase()).width;
-    if (width > W - 70) size = Math.floor((size * (W - 70)) / width);
+    if (width > maxWidth) size = Math.floor((size * maxWidth) / width);
     return Math.max(12, size);
   }
 

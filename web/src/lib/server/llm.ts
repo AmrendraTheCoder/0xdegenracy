@@ -31,7 +31,7 @@ export async function generateConfig(input: {
     { role: "user", content: `Idea: ${input.prompt}${input.gameType ? `\nUse gameType: ${input.gameType}` : ""}` },
   ];
   try {
-    // Hosted models honour JSON mode. Many local models (via OmniRoute → Ollama, LM Studio, llama.cpp)
+    // Hosted models honour JSON mode. Many local models (via OmniRoute to Ollama, LM Studio, llama.cpp)
     // reject `response_format`, so retry once without it on a 400/422.
     let res = await chat(e, messages, true, deadline);
     if (res.status === 400 || res.status === 422) res = await chat(e, messages, false, deadline);

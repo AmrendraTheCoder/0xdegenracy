@@ -21,8 +21,8 @@ async function load(id: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const game = await load((await params).id);
-  if (!game) return { title: "Not found — Reachy" };
-  const title = `${game.config.title} · $${game.config.ticker} — Reachy`;
+  if (!game) return { title: "Not found — 0xdegenracy" };
+  const title = `${game.config.title} · $${game.config.ticker} — 0xdegenracy`;
   return {
     title,
     description: game.config.tagline,
@@ -49,26 +49,24 @@ export default async function GamePage({ params }: Props) {
 
   return (
     <article aria-labelledby="game-title" className={token ? "pb-20 lg:pb-0" : undefined}>
-      <header className="mb-5">
+      <header className="mb-6">
         <div className="mb-2 flex flex-wrap gap-1.5">
-          <Badge tone="mint">
-            <span aria-hidden>{meta.emoji}</span> {meta.label}
-          </Badge>
+          <Badge tone="mint">{meta.label}</Badge>
           <Badge tone="banana">${c.ticker}</Badge>
         </div>
-        <h1 id="game-title" className="break-words font-[family-name:var(--font-display)] text-3xl font-black leading-none sm:text-4xl">
+        <h1 id="game-title" className="break-words font-[family-name:var(--font-display)] text-3xl font-extrabold leading-[0.95] sm:text-5xl">
           {c.title}
         </h1>
-        <p className="mt-2 max-w-prose text-sm">{c.tagline}</p>
+        <p className="mt-2 max-w-prose text-base text-ink/80">{c.tagline}</p>
       </header>
 
-      {/* Phone: game → trade → chart → proof. Desktop: game + chart left, trade + proof right. */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {/* Phone: game, trade, chart, proof. Desktop: game and chart on the left, trading on the right. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section aria-label="Play" className="min-w-0 lg:col-start-1 lg:row-start-1">
           <GamePlayer config={c} imageUrl={game.image_url} gameId={game.id} tradeHref={`#${TRADE_ID}`} />
         </section>
 
-        <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+        <div className="min-w-0 space-y-6 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           {token ? (
             <TokenPanel id={TRADE_ID} token={token} config={c} imageUrl={game.image_url} />
           ) : (

@@ -10,3 +10,4 @@ export { Skeleton } from "./Skeleton";
 export { Stat, StatGrid } from "./Stat";
 export { TabPanel, Tabs, type TabItem } from "./Tabs";
 export { cn } from "./cn";
+export { Icon, type IconName, type IconProps } from "./Icon";

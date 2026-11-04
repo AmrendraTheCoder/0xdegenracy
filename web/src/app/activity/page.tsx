@@ -3,8 +3,9 @@ import Link from "next/link";
 import { getStore, type EventKind, type GameEvent } from "@/lib/server/store";
 import { explorerAddress, explorerTx } from "@/lib/chain";
 import { short, timeAgo } from "@/lib/format";
+import { Icon } from "@/components/ui/Icon";
 
-export const metadata: Metadata = { title: "Activity — Reachy" };
+export const metadata: Metadata = { title: "Activity — 0xdegenracy" };
 export const dynamic = "force-dynamic";
 
 const TABS: { key: string; label: string; kinds?: EventKind[] }[] = [
@@ -68,7 +69,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               </span>
               <span className="flex flex-wrap gap-3 text-xs opacity-80">
                 {e.actor && <a className="underline" href={explorerAddress(e.actor)} target="_blank" rel="noreferrer">{short(e.actor)}</a>}
-                {e.tx_hash && <a className="font-bold underline" href={explorerTx(e.tx_hash)} target="_blank" rel="noreferrer">tx {short(e.tx_hash)} ↗</a>}
+                {e.tx_hash && <a className="font-bold underline" href={explorerTx(e.tx_hash)} target="_blank" rel="noreferrer">tx {short(e.tx_hash)} <Icon name="external" size={12} className="inline" /></a>}
                 {typeof e.data?.blockNumber === "string" && <span>block {e.data.blockNumber}</span>}
                 <span title={e.created_at}>{timeAgo(e.created_at)}</span>
               </span>

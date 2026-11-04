@@ -12,6 +12,7 @@ import { TRADE_EVENT, useTx } from "@/lib/useTx";
 import { errorText, useToast } from "./Toaster";
 import { GAME_META } from "@/games";
 import type { PortfolioPosition } from "@/app/api/portfolio/[address]/route";
+import { Icon } from "./ui/Icon";
 
 const SLIPPAGE_BPS = 500n;
 const PCTS = [25, 50, 100] as const;
@@ -75,11 +76,11 @@ export function PortfolioView() {
   if (!mounted) return <Skeleton />;
   if (!isConnected || !address)
     return (
-      <Notice title="Connect your wallet" body="Your portfolio shows every Reachy coin you hold, what you paid, what it's worth now, and lets you sell." />
+      <Notice title="Connect your wallet" body="Your portfolio shows every 0xdegenracy coin you hold, what you paid, what it's worth now, and lets you sell." />
     );
   if (chainId !== monadTestnet.id)
     return (
-      <Notice title="Wrong network" body="Reachy runs on Monad testnet.">
+      <Notice title="Wrong network" body="0xdegenracy runs on Monad testnet.">
         <button className="brut-btn mt-3 bg-hot px-4 py-2 text-white" onClick={() => switchChain({ chainId: monadTestnet.id })}>Switch to Monad testnet</button>
       </Notice>
     );
@@ -138,7 +139,7 @@ export function PortfolioView() {
       )}
 
       <p className="text-[11px] leading-tight opacity-60">
-        Cost basis uses average cost over trades made through Reachy (each one verified on-chain). Coins bought before tracking existed, or
+        Cost basis uses average cost over trades made through 0xdegenracy (each one verified on-chain). Coins bought before tracking existed, or
         received by transfer, count toward value but not cost. Values are what selling returns right now on the bonding curve, after the 2% fee.
       </p>
     </div>
@@ -196,7 +197,7 @@ function PositionRow({ p, owner, onDone }: { p: PortfolioPosition; owner: Addres
             ${p.ticker} <span className="text-sm font-bold opacity-60">{p.tokenName}</span>
           </Link>
           <div className="text-xs opacity-70">
-            {meta.emoji} {p.title} · {p.trades} trade{p.trades === 1 ? "" : "s"}
+            {meta.label} · {p.title} · {p.trades} trade{p.trades === 1 ? "" : "s"}
             {p.lastTradeAt ? ` · last ${timeAgo(p.lastTradeAt)}` : ""}
           </div>
         </div>
@@ -240,7 +241,7 @@ function PositionRow({ p, owner, onDone }: { p: PortfolioPosition; owner: Addres
         ) : (
           <span className="text-xs opacity-70">Launched before sells existed: this coin is buy-only.</span>
         )}
-        <Link href={`/game/${p.gameId}`} className="ml-auto text-sm font-bold underline">Play & trade →</Link>
+        <Link href={`/game/${p.gameId}`} className="ml-auto inline-flex items-center gap-1 text-sm font-bold underline">Play & trade <Icon name="arrowRight" size={14} /></Link>
       </div>
       {untracked > 0n && (
         <p className="text-[11px] opacity-60 sm:col-span-2">{fmtTokens(untracked)} of these have no purchase record (bought before tracking), so their cost isn&apos;t counted.</p>

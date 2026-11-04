@@ -1,4 +1,4 @@
--- Reachy v2: persistent activity / proof / error log. Run once in the Supabase SQL editor.
+-- 0xdegenracy v2: persistent activity / proof / error log. Run once in the Supabase SQL editor.
 create table if not exists public.events (
   id          text primary key,                 -- "<txHash>:<logIndex>" for chain events (dedupes), random for others
   created_at  timestamptz not null default now(),  -- block time for trades

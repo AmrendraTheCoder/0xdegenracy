@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "./cn";
+import { Icon } from "./Icon";
 
 /** Copies `value` to the clipboard and confirms visually and via a polite live region. */
 export function CopyButton({ value, label = "Copy", className }: { value: string; /** Accessible name, e.g. "Copy token address". */ label?: string; className?: string }) {
@@ -24,7 +25,7 @@ export function CopyButton({ value, label = "Copy", className }: { value: string
           className,
         )}
       >
-        <span aria-hidden>{state === "copied" ? "✓" : state === "failed" ? "!" : "⧉"}</span>
+        <Icon name={state === "copied" ? "check" : state === "failed" ? "alert" : "copy"} size={15} />
       </button>
       <span role="status" className="sr-only">
         {state === "copied" ? "Copied" : state === "failed" ? "Copy failed" : ""}

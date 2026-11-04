@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { Icon, type IconName } from "./ui/Icon";
 
 export type ToastKind = "pending" | "success" | "error" | "info";
 export type Toast = { id: string; kind: ToastKind; title: string; description?: string; href?: string; linkLabel?: string };
@@ -20,7 +21,7 @@ export function useToast() {
   return api;
 }
 
-const ICON: Record<ToastKind, string> = { pending: "⏳", success: "✅", error: "❌", info: "ℹ️" };
+const ICON: Record<ToastKind, IconName> = { pending: "restart", success: "circleCheck", error: "circleX", info: "info" };
 const BG: Record<ToastKind, string> = { pending: "bg-white", success: "bg-mint", error: "bg-hot text-white", info: "bg-banana" };
 
 export function Toaster({ children }: { children: ReactNode }) {
@@ -57,18 +58,22 @@ export function Toaster({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div key={t.id} role="status" className={`brut pointer-events-auto w-full max-w-sm p-3 text-sm ${BG[t.kind]}`}>
             <div className="flex items-start gap-2">
-              <span className={t.kind === "pending" ? "animate-spin" : ""}>{ICON[t.kind]}</span>
+              {t.kind === "pending" ? (
+                <span aria-hidden className="mt-0.5 inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" />
+              ) : (
+                <Icon name={ICON[t.kind]} size={18} className="mt-px" />
+              )}
               <div className="min-w-0 flex-1">
                 <div className="font-black">{t.title}</div>
                 {t.description && <div className="mt-0.5 break-words text-xs opacity-90">{t.description}</div>}
                 {t.href && (
-                  <a href={t.href} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-bold underline">
-                    {t.linkLabel ?? "View on explorer ↗"}
+                  <a href={t.href} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs font-bold underline">
+                    {t.linkLabel ?? "View on explorer"} <Icon name="external" size={12} />
                   </a>
                 )}
               </div>
-              <button onClick={() => dismiss(t.id)} className="px-1 font-black opacity-60 hover:opacity-100" aria-label="Dismiss">
-                ✕
+              <button onClick={() => dismiss(t.id)} className="grid h-6 w-6 place-items-center rounded opacity-60 hover:opacity-100" aria-label="Dismiss">
+                <Icon name="x" size={14} />
               </button>
             </div>
           </div>

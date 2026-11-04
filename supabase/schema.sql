@@ -1,4 +1,4 @@
--- Reachy: run once in the Supabase SQL editor.
+-- 0xdegenracy: run once in the Supabase SQL editor.
 create table if not exists public.games (
   id             text primary key,                       -- short slug used in /game/[id]
   created_at     timestamptz not null default now(),

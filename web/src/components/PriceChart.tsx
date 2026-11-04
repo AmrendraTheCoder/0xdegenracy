@@ -6,6 +6,7 @@ import { fmtMon, fmtPrice, fmtTokens, short, timeAgo } from "@/lib/format";
 import { useLivePrice, useTrades, type Trade } from "@/lib/hooks/useToken";
 import { explorerTx } from "@/lib/chain";
 import { Card, ErrorState, Notice, Skeleton, cn } from "./ui";
+import { Icon } from "./ui/Icon";
 
 const BASE_PRICE = 1e8; // GameTokenFactory.BASE_PRICE
 
@@ -28,14 +29,23 @@ export function PriceChart({ gameId, launchedAt, accent, token }: PriceChartProp
         <p className="text-right text-sm" aria-live="polite">
           <b>{fmtPrice(last)}</b>{" "}
           <span className={cn("font-bold", up ? "text-up" : "text-hot-strong")}>
-            <span aria-hidden>{up ? "▲" : "▼"}</span> {up ? "+" : ""}
+            <Icon name={up ? "trendUp" : "trendDown"} size={15} className="mr-0.5 inline align-[-2px]" /> {up ? "+" : ""}
             {change.toFixed(2)}%<span className="sr-only"> since launch</span>
           </span>
         </p>
       }
     >
       {status === "loading" ? (
-        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-36 w-full" />
+      ) : trades.length === 0 ? (
+        // Without recorded trades there is no history to draw; a flat line that jumps at the end would mislead.
+        <div className="grid h-36 place-items-center rounded-xl border-2 border-dashed border-ink/25 bg-paper/60 px-4 text-center">
+          <div>
+            <Icon name="activity" size={22} className="mx-auto text-ink/50" />
+            <p className="mt-1 text-sm font-bold">Price history starts with the first recorded trade</p>
+            <p className="text-xs text-ink/60">Current price {fmtPrice(last)}</p>
+          </div>
+        </div>
       ) : (
         <StepChart trades={trades} launchedAt={launchedAt} last={last} accent={accent} />
       )}
@@ -84,7 +94,7 @@ function StepChart({ trades, launchedAt, last, accent }: { trades: Trade[]; laun
 
   return (
     <figure>
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full" role="img" aria-labelledby={`${titleId} ${descId}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-36 w-full" preserveAspectRatio="none" role="img" aria-labelledby={`${titleId} ${descId}`}>
         <title id={titleId}>Price over time</title>
         <desc id={descId}>
           {`Started at ${fmtPrice(BASE_PRICE)} at launch, now ${fmtPrice(last)} after ${trades.length} trades (${buys} buys, ${trades.length - buys} sells).`}
@@ -99,7 +109,8 @@ function StepChart({ trades, launchedAt, last, accent }: { trades: Trade[]; laun
       <figcaption className="mt-1 flex justify-between text-[11px] text-ink/70">
         <span>launch</span>
         <span>
-          {trades.length} trade{trades.length === 1 ? "" : "s"} · <span className="text-up">● buy</span> <span className="text-hot-strong">● sell</span>
+          {trades.length} trade{trades.length === 1 ? "" : "s"} · <span className="inline-flex items-center gap-1 text-up"><i className="inline-block h-2 w-2 rounded-full bg-up" />buy</span>{" "}
+          <span className="inline-flex items-center gap-1 text-hot-strong"><i className="inline-block h-2 w-2 rounded-full bg-hot" />sell</span>
         </span>
         <span>now</span>
       </figcaption>
@@ -119,7 +130,7 @@ function RecentTrades({ trades }: { trades: Trade[] }) {
           <span className="hidden font-mono text-ink/70 sm:inline">{short(tr.actor)}</span>
           <a className="font-bold underline" href={explorerTx(tr.tx_hash)} target="_blank" rel="noreferrer">
             {timeAgo(tr.created_at)}
-            <span aria-hidden> ↗</span>
+            <Icon name="external" size={11} className="ml-0.5 inline" />
             <span className="sr-only"> view {tr.kind} transaction on explorer (opens in a new tab)</span>
           </a>
         </li>

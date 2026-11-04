@@ -2,6 +2,7 @@
 
 import { useToast } from "@/components/Toaster";
 import { Button } from "@/components/ui";
+import { Icon } from "../ui/Icon";
 
 /** Native share sheet when available, else copies the page URL and confirms with a toast. */
 export function ShareButton({ title, text }: { title: string; text: string }) {
@@ -24,7 +25,7 @@ export function ShareButton({ title, text }: { title: string; text: string }) {
         }
       }}
     >
-      <span aria-hidden>📣</span> Share
+      <Icon name="share" size={18} /> Share
     </Button>
   );
 }

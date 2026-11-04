@@ -1,4 +1,4 @@
-# Reachy: architecture, review and optimizations
+# 0xdegenracy: architecture, review and optimizations
 
 > Upload a face, type a game idea, get a playable meme game plus a memecoin with that face on it,
 > live on Monad testnet in under a minute. *pump.fun, but every coin ships with a game.*

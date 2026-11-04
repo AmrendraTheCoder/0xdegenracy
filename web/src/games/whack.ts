@@ -101,7 +101,7 @@ export const whack: GameFactory = (api) => {
             g.beginPath();
             g.arc(h.x, y, R - 4, 0, Math.PI * 2);
             g.fill();
-            api.label(g, "💣", h.x, y, 34);
+            drawBomb(g, h.x, y, R - 12);
           } else {
             api.drawHero(g, h.x, y, R);
             if (h.hit) api.label(g, "BONK", h.x, y - R - 6, 18, accent);
@@ -110,7 +110,7 @@ export const whack: GameFactory = (api) => {
           if (h.bad) api.label(g, api.cfg.obstacleLabel.toUpperCase(), h.x, h.y + 56, 11);
         }
       }
-      api.label(g, "♥".repeat(Math.max(0, lives)), W - 50, 30, 22, accent);
+      api.hearts(g, W - 14, 29, Math.max(0, lives));
       if (flash > 0) {
         g.fillStyle = `rgba(255,0,0,${flash})`;
         g.fillRect(0, 0, W, H);
@@ -118,3 +118,30 @@ export const whack: GameFactory = (api) => {
     },
   };
 };
+
+/** A cartoon bomb: dark body, shine, fuse and a spark, all vector. */
+function drawBomb(g: CanvasRenderingContext2D, x: number, y: number, r: number) {
+  g.save();
+  g.fillStyle = "#1b1b1f";
+  g.beginPath();
+  g.arc(x, y + 4, r, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "rgba(255,255,255,0.35)";
+  g.beginPath();
+  g.arc(x - r * 0.35, y + 4 - r * 0.35, r * 0.25, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = "#3a3a42";
+  g.fillRect(x - 5, y + 4 - r - 6, 10, 8);
+  g.strokeStyle = "#c8a165";
+  g.lineWidth = 3;
+  g.lineCap = "round";
+  g.beginPath();
+  g.moveTo(x, y + 4 - r - 6);
+  g.quadraticCurveTo(x + 8, y - r - 14, x + 14, y - r - 10);
+  g.stroke();
+  g.fillStyle = "#ffbe0b";
+  g.beginPath();
+  g.arc(x + 15, y - r - 11, 4 + Math.random() * 2, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+}

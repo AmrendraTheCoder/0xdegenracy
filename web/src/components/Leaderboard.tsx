@@ -7,6 +7,7 @@ import { gameTokenFactoryAbi, prizePoolAbi } from "@/lib/abi";
 import { explorerAddress, FACTORY_ADDRESS, monadTestnet } from "@/lib/chain";
 import { fmtMon, short } from "@/lib/format";
 import { useTx } from "@/lib/useTx";
+import { Icon } from "./ui/Icon";
 
 export const SHARES = [25, 18, 15, 12, 10, 8, 6, 4, 1, 1];
 
@@ -110,7 +111,7 @@ export function Leaderboard() {
               Settle & pay winners
             </button>
           )}
-          {ySettled && <span className="text-sm font-bold text-green-700">✅ Paid out</span>}
+          {ySettled && <span className="inline-flex items-center gap-1 text-sm font-bold text-up"><Icon name="circleCheck" size={16} /> Paid out</span>}
         </div>
         <Board entries={yTop} pool={yPool} you={address} empty="Nobody traded yesterday." bare />
       </section>
@@ -118,14 +119,14 @@ export function Leaderboard() {
       <section className="brut bg-white p-4 text-sm">
         <h2 className="font-black">How it works</h2>
         <ul className="mt-1 list-disc space-y-1 pl-5">
-          <li>Every buy and sell of a Reachy coin pays a 2% fee: 1% to the game&apos;s creator, 1% into today&apos;s pool.</li>
+          <li>Every buy and sell of a 0xdegenracy coin pays a 2% fee: 1% to the game&apos;s creator, 1% into today&apos;s pool.</li>
           <li>Your score is your total MON traded today, across all games, measured on-chain.</li>
           <li>After 00:00 UTC anyone can settle (a daily job does it too). Payouts: {SHARES.map((s, i) => `#${i + 1} ${s}%`).join(" · ")}.</li>
           <li>Unfilled ranks roll over into the next day&apos;s pool.</li>
         </ul>
         {pool && (
           <a className="mt-2 inline-block underline" href={explorerAddress(pool)} target="_blank" rel="noreferrer">
-            PrizePool contract {short(pool)} ↗
+            PrizePool contract {short(pool)} <Icon name="external" size={13} />
           </a>
         )}
       </section>
@@ -155,7 +156,9 @@ function Board({ title, entries, pool, you, empty, bare }: { title?: string; ent
               const me = you && e.user.toLowerCase() === you.toLowerCase();
               return (
                 <tr key={e.user} className={`border-t border-ink/10 ${me ? "bg-banana/60 font-black" : ""}`}>
-                  <td className="py-1.5 font-black">{i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</td>
+                  <td className="py-1.5">
+                    <span className={`inline-grid h-7 w-7 place-items-center rounded-full border-2 border-ink text-xs font-black ${["bg-banana", "bg-[#e5e7eb]", "bg-[#f4b183]"][i] ?? "bg-white"}`}>{i + 1}</span>
+                  </td>
                   <td>
                     <a className="underline" href={explorerAddress(e.user)} target="_blank" rel="noreferrer">{short(e.user)}</a>
                     {me && " (you)"}

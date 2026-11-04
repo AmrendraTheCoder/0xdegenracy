@@ -90,10 +90,14 @@ export const flappy: GameFactory = (api) => {
         g.restore();
       }
       // striped floor
-      g.fillStyle = fg;
+      const floorFill = g.createLinearGradient(0, FLOOR, 0, H);
+      floorFill.addColorStop(0, api.shade(bg, -0.28));
+      floorFill.addColorStop(1, api.shade(bg, -0.45));
+      g.fillStyle = floorFill;
       g.fillRect(0, FLOOR, W, H - FLOOR);
-      g.fillStyle = accent;
-      for (let x = -floorX; x < W; x += 40) g.fillRect(x, FLOOR + 6, 20, 6);
+      g.fillStyle = fg;
+      g.fillRect(0, FLOOR, W, 4);
+      for (let x = -floorX; x < W; x += 40) api.rrect(g, x, FLOOR + 14, 22, 6, 3, accent);
       g.save();
       g.translate(hero.x, hero.y);
       g.rotate(Math.max(-0.5, Math.min(1.2, hero.vy / 700)));

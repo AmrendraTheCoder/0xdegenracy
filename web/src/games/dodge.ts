@@ -81,7 +81,15 @@ export const dodge: GameFactory = (api) => {
           g.fill();
         } else {
           api.rrect(g, -it.r, -it.r, it.r * 2, it.r * 2, 6, fg, accent);
-          api.label(g, "✕", 0, 1, 22, accent);
+          g.strokeStyle = accent;
+          g.lineWidth = 4;
+          g.lineCap = "round";
+          g.beginPath();
+          g.moveTo(-it.r / 2.2, -it.r / 2.2);
+          g.lineTo(it.r / 2.2, it.r / 2.2);
+          g.moveTo(it.r / 2.2, -it.r / 2.2);
+          g.lineTo(-it.r / 2.2, it.r / 2.2);
+          g.stroke();
         }
         g.restore();
         api.label(g, (it.good ? api.cfg.goodItemLabel : api.cfg.obstacleLabel).toUpperCase(), it.x, it.y - it.r - 10, 11);
@@ -96,7 +104,7 @@ export const dodge: GameFactory = (api) => {
       g.rotate(Math.max(-0.35, Math.min(0.35, hero.lean)));
       api.drawHero(g, 0, 0, R);
       g.restore();
-      api.label(g, "♥".repeat(Math.max(0, lives)), W - 50, 30, 22, accent);
+      api.hearts(g, W - 14, 29, Math.max(0, lives));
       if (combo >= 3) api.label(g, `COMBO x${combo}`, W / 2, 118, 14, accent);
       if (hurtFlash > 0) {
         g.fillStyle = `rgba(255,0,0,${hurtFlash})`;

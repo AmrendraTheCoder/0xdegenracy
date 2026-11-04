@@ -112,7 +112,7 @@ kbd {
   gap: 0.35rem;
   border: 2px solid transparent;
   border-radius: 999px;
-  padding: 0.3rem 0.7rem;
+  padding: 0.35rem 0.5rem;
   font-weight: 700;
   transition: background-color 120ms ease;
 }
@@ -142,6 +142,20 @@ kbd {
   }
   to {
     background-position: -100% 0;
+  }
+}
+
+/* Show on-screen game pads only where there is no precise pointer (phones, tablets),
+   and keyboard hints only where there is one (laptops, desktops). */
+.touch-only {
+  display: none;
+}
+@media (pointer: coarse) {
+  .touch-only {
+    display: block;
+  }
+  .pointer-only {
+    display: none !important;
   }
 }
 
@@ -183,5 +197,10 @@ canvas.game:focus-visible {
   }
   .skeleton {
     animation: none;
+  }
+}
+@media (min-width: 640px) {
+  .nav-link {
+    padding: 0.3rem 0.7rem;
   }
 }
