@@ -4,11 +4,15 @@ import type { Address } from "viem";
 import { GamePlayer } from "@/components/GamePlayer";
 import { PriceChart } from "@/components/PriceChart";
 import { TokenPanel } from "@/components/TokenPanel";
+import { MobileTradeBar } from "@/components/token/MobileTradeBar";
+import { OnChainProof } from "@/components/token/OnChainProof";
+import { Badge, Card, Notice } from "@/components/ui";
+import { GAME_META } from "@/games";
 import { getStore } from "@/lib/server/store";
-import { explorerAddress, explorerTx } from "@/lib/chain";
-import { short } from "@/lib/format";
 
 type Props = { params: Promise<{ id: string }> };
+
+const TRADE_ID = "buy";
 
 async function load(id: string) {
   if (!/^[a-z0-9]{6,16}$/.test(id)) return null;
@@ -31,53 +35,62 @@ export default async function GamePage({ params }: Props) {
   const game = await load((await params).id);
   if (!game || game.status === "failed") notFound();
   const c = game.config;
+  const token = game.token_address as Address | null;
+  const meta = GAME_META[c.gameType];
   // The launch event carries block and gas data; older games launched before the event log have none.
   const [launch] = await getStore()
     .listEvents({ gameId: game.id, kinds: ["launch"], limit: 1 })
     .catch(() => []);
+  const blockNumber = typeof launch?.data?.blockNumber === "string" ? launch.data.blockNumber : undefined;
+  const factory = typeof launch?.data?.factory === "string" ? launch.data.factory : undefined;
+
+  const proof = (id: string) =>
+    game.tx_hash && token ? <OnChainProof id={id} token={token} txHash={game.tx_hash} creator={game.creator} blockNumber={blockNumber} factory={factory} /> : null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-      <section className="space-y-4">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-black leading-none sm:text-4xl">{c.title}</h1>
-          <p className="mt-1 text-sm">{c.tagline}</p>
+    <article aria-labelledby="game-title" className={token ? "pb-20 lg:pb-0" : undefined}>
+      <header className="mb-5">
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          <Badge tone="mint">
+            <span aria-hidden>{meta.emoji}</span> {meta.label}
+          </Badge>
+          <Badge tone="banana">${c.ticker}</Badge>
         </div>
-        <GamePlayer config={c} imageUrl={game.image_url} gameId={game.id} />
-        {game.token_address && <PriceChart gameId={game.id} launchedAt={game.created_at} accent={c.colors.accent} token={game.token_address as Address} />}
-      </section>
-      <div className="space-y-4">
-        {game.token_address ? (
-          <TokenPanel token={game.token_address as Address} config={c} imageUrl={game.image_url} txHash={game.tx_hash} />
-        ) : (
-          <aside className="brut bg-white p-4 text-sm font-bold">Token is still launching… refresh in a few seconds.</aside>
+        <h1 id="game-title" className="break-words font-[family-name:var(--font-display)] text-3xl font-black leading-none sm:text-4xl">
+          {c.title}
+        </h1>
+        <p className="mt-2 max-w-prose text-sm">{c.tagline}</p>
+      </header>
+
+      {/* Phone: game → trade → chart → proof. Desktop: game + chart left, trade + proof right. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section aria-label="Play" className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <GamePlayer config={c} imageUrl={game.image_url} gameId={game.id} tradeHref={`#${TRADE_ID}`} />
+        </section>
+
+        <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          {token ? (
+            <TokenPanel id={TRADE_ID} token={token} config={c} imageUrl={game.image_url} />
+          ) : (
+            <Card as="aside" id={TRADE_ID} title={`$${c.ticker}`}>
+              <Notice tone="warn" title="Token is still launching">
+                The launch transaction is being confirmed. Refresh in a few seconds.
+              </Notice>
+            </Card>
+          )}
+          {proof("proof") && <div className="hidden lg:block">{proof("proof")}</div>}
+        </div>
+
+        {token && (
+          <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+            <PriceChart gameId={game.id} launchedAt={game.created_at} accent={c.colors.accent} token={token} />
+          </div>
         )}
-        {game.tx_hash && game.token_address && (
-          <aside className="brut bg-white p-4 text-sm">
-            <h2 className="font-black">On-chain proof</h2>
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-              <dt className="opacity-70">Token</dt>
-              <dd className="text-right"><a className="underline" href={explorerAddress(game.token_address)} target="_blank" rel="noreferrer">{short(game.token_address)} ↗</a></dd>
-              <dt className="opacity-70">Launch tx</dt>
-              <dd className="text-right"><a className="underline" href={explorerTx(game.tx_hash)} target="_blank" rel="noreferrer">{short(game.tx_hash)} ↗</a></dd>
-              {typeof launch?.data?.blockNumber === "string" && (
-                <>
-                  <dt className="opacity-70">Block</dt>
-                  <dd className="text-right">{launch.data.blockNumber}</dd>
-                </>
-              )}
-              {typeof launch?.data?.factory === "string" && (
-                <>
-                  <dt className="opacity-70">Factory</dt>
-                  <dd className="text-right"><a className="underline" href={explorerAddress(launch.data.factory)} target="_blank" rel="noreferrer">{short(launch.data.factory)} (verified) ↗</a></dd>
-                </>
-              )}
-              <dt className="opacity-70">Creator</dt>
-              <dd className="text-right"><a className="underline" href={explorerAddress(game.creator)} target="_blank" rel="noreferrer">{short(game.creator)} ↗</a></dd>
-            </dl>
-          </aside>
-        )}
+        {/* On phones the proof goes last, after the chart; only one copy is ever displayed. */}
+        {proof("proof-mobile") && <div className="lg:hidden">{proof("proof-mobile")}</div>}
       </div>
-    </div>
+
+      {token && <MobileTradeBar token={token} ticker={c.ticker} targetId={TRADE_ID} />}
+    </article>
   );
 }

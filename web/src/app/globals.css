@@ -7,6 +7,9 @@
   --color-hot: #ff6b6b;
   --color-mint: #a0e7e5;
   --color-grape: #7b2cbf;
+  /* Darker coral for text on light backgrounds (hot on white is under 3:1). */
+  --color-hot-strong: #b42318;
+  --color-up: #15803d;
   --font-display: ui-rounded, "Arial Black", system-ui, sans-serif;
 }
 
@@ -42,4 +45,27 @@ canvas.game {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+}
+
+/* Visible keyboard focus everywhere, never on mouse click. */
+:focus-visible {
+  outline: 3px solid var(--color-grape);
+  outline-offset: 2px;
+}
+.brut-btn:focus-visible {
+  outline-offset: 3px;
+}
+canvas.game:focus-visible {
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brut-btn {
+    transition: none;
+  }
 }
