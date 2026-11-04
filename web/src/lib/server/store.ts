@@ -125,8 +125,8 @@ export function getStore(): GameStore {
   if (store) return store;
   const e = env();
   store =
-    e.SUPABASE_URL && e.SUPABASE_SERVICE_ROLE_KEY
-      ? new SupabaseStore(e.SUPABASE_URL, e.SUPABASE_SERVICE_ROLE_KEY, e.SUPABASE_BUCKET)
+    e.SUPABASE_URL && e.SUPABASE_SECRET_KEY
+      ? new SupabaseStore(e.SUPABASE_URL, e.SUPABASE_SECRET_KEY, e.SUPABASE_BUCKET)
       : new LocalStore();
   return store;
 }
