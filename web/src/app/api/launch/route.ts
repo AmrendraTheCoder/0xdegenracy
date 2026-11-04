@@ -5,6 +5,7 @@ import { normalizeConfig, type GameConfig } from "@/lib/game-config";
 import { env } from "@/lib/server/env";
 import { getStore, type GameStore } from "@/lib/server/store";
 import { launchToken, platformAddress } from "@/lib/server/chain";
+import { verifyGameCode } from "@/lib/server/codegen";
 import { logError, logEvent } from "@/lib/server/log";
 import { clientIp, rateLimit } from "@/lib/server/rate-limit";
 import { FACTORY_ADDRESS } from "@/lib/chain";
@@ -70,12 +71,21 @@ export async function POST(req: Request) {
   const creatorRaw = String(form.get("creator") ?? "");
   const creator: Address | null = isAddress(creatorRaw) ? creatorRaw : null;
 
+  // Custom games must carry code signed by our generator. Without this, anyone could skip the AI and
+  // launch arbitrary code by calling this endpoint directly. (It would still be sandboxed, but it
+  // would no longer be an AI-made, checked game.)
+  const normalized = normalizeConfig(rawConfig);
+  if (normalized.gameType === "custom" && !(normalized.code && verifyGameCode(normalized.code, normalized.codeSig))) {
+    return NextResponse.json({ error: "This custom game wasn't produced by the generator. Generate it again." }, { status: 400 });
+  }
+  const { codeSig: _sig, ...toStore } = normalized; // the signature has done its job; don't persist it
+
   const store = getStore();
   const id = newId();
   let stage = "validate";
   try {
     stage = "unique-name";
-    const config = await makeUnique(store, normalizeConfig(rawConfig));
+    const config = await makeUnique(store, toStore);
     stage = "upload-image";
     const imageUrl = await store.uploadImage(id, bytes, type);
     stage = "save-game";

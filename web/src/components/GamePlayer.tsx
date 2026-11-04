@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import type { GameConfig } from "@/lib/game-config";
+import { isPreset, type GameConfig } from "@/lib/game-config";
 import { COMMON_KEYS, GAMES, GAME_META, type PadButton } from "@/games";
 import { runGame, type GameController } from "@/games/engine";
 import { buttonClasses, cn } from "./ui";
 import { Icon, type IconName } from "./ui/Icon";
+import { CustomGamePlayer } from "./CustomGamePlayer";
 
 export type GamePlayerProps = {
   config: GameConfig;
@@ -20,7 +21,14 @@ export type GamePlayerProps = {
  * a toolbar (game type, best score, mute / pause / restart) and controls that adapt to the device:
  * keyboard hints on desktop, hold-to-move touch buttons on phones and tablets.
  */
-export function GamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: GamePlayerProps) {
+/** Picks the right player: AI-written games run in a sandboxed iframe, presets on the canvas engine. */
+export function GamePlayer(props: GamePlayerProps) {
+  const { config } = props;
+  if (config.gameType === "custom" && config.code) return <CustomGamePlayer config={config} imageUrl={props.imageUrl} gameId={props.gameId} tradeHref={props.tradeHref} />;
+  return <PresetGamePlayer {...props} />;
+}
+
+function PresetGamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: GamePlayerProps) {
   const ref = useRef<HTMLCanvasElement>(null);
   const ctrl = useRef<GameController | null>(null);
   const [best, setBest] = useState(0);
@@ -40,7 +48,8 @@ export function GamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: Gam
       canvas: ref.current,
       cfg: config,
       spriteUrl: imageUrl,
-      factory: GAMES[config.gameType],
+      // A custom game without code (should not happen) plays its closest preset instead.
+      factory: GAMES[isPreset(config.gameType) ? config.gameType : (config.fallbackType ?? "runner")],
       bestKey,
       hint: meta.controls,
       // Respect the OS setting: no screen shake or white flashes for motion-sensitive players.
@@ -141,7 +150,7 @@ export function GamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: Gam
   );
 }
 
-function ToolButton({ label, icon, onClick, pressed }: { label: string; icon: IconName; onClick: () => void; pressed?: boolean }) {
+export function ToolButton({ label, icon, onClick, pressed }: { label: string; icon: IconName; onClick: () => void; pressed?: boolean }) {
   return (
     <button
       type="button"
@@ -159,7 +168,7 @@ function ToolButton({ label, icon, onClick, pressed }: { label: string; icon: Ic
 }
 
 /** Touch buttons that hold a key down while pressed, so movement keeps going while your thumb is on it. */
-function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ctrl: React.RefObject<GameController | null> }) {
+export function Pad({ buttons, dpad, ctrl }: { buttons: PadButton[]; dpad?: boolean; ctrl: React.RefObject<GameController | null> }) {
   const btn = (b: PadButton, extra = "") => (
     <button
       key={b.code + b.label}

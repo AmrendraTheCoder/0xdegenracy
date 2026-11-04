@@ -4,13 +4,16 @@ import { normalizeConfig, type GameConfig, type GameType } from "../game-config"
 
 const SYSTEM = `You turn a one-line meme game idea into a JSON game config. Reply with ONE JSON object only, no prose.
 Schema:
-{"gameType":"flappy|runner|dodge|whack|snake|breakout|shooter","title":string<=40,"ticker":3-6 uppercase letters,
+{"gameType":"flappy|runner|dodge|whack|snake|breakout|shooter|custom","fallbackType":"flappy|runner|dodge|whack|snake|breakout|shooter",
+"title":string<=40,"ticker":3-6 uppercase letters,
 "tokenName":string<=48,"tagline":string<=80,"scoreLabel":string<=24,"gameOverText":string<=32,"obstacleLabel":string<=16,
 "goodItemLabel":string<=16,"colors":{"bg":"#hex","fg":"#hex","accent":"#hex"},
 "difficulty":{"speed":0.6-1.8,"gravity":0.6-1.6,"spawnRate":0.6-1.8}}
 Pick gameType: flappy = flying/floating/flapping, runner = running/chasing/escaping, dodge = catching or avoiding
 falling things, whack = popping up/bonking/smacking, snake = eating/growing/slithering, breakout = bouncing a ball/
 smashing bricks or walls, shooter = space/aliens/shooting/lasers.
+Use "custom" ONLY when the idea clearly needs different mechanics than all seven (e.g. a maze, a rhythm game, a
+racing lane game, stacking, a platformer, pong). Always set fallbackType to the closest preset.
 tokenName must be a punchy, original coin name that is NOT just the title plus "Coin" (e.g. "Bananaverse Inu").
 Tone: degen, funny, short. Bright flat colors with readable fg on bg.
 Never use existing brands, trademarked characters, or real people's names.`;

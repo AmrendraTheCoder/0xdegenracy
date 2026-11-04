@@ -9,13 +9,17 @@ import { prepareImage } from "@/lib/image";
 import { explorerTx } from "@/lib/chain";
 import { useToast } from "./Toaster";
 import { Icon } from "./ui/Icon";
+import { Button } from "./ui";
+import { CustomGamePlayer } from "./CustomGamePlayer";
 
-type Step = "idle" | "config" | "token" | "publish";
-const STEPS: { key: Exclude<Step, "idle">; label: string }[] = [
-  { key: "config", label: "Generating game config" },
+type Step = "idle" | "config" | "preview" | "token" | "publish";
+const STEPS: { key: Exclude<Step, "idle" | "preview">; label: string }[] = [
+  { key: "config", label: "Designing your game (custom games take up to a minute)" },
   { key: "token", label: "Launching token on Monad" },
   { key: "publish", label: "Publishing game" },
 ];
+
+type Generated = { config: GameConfig; mode: "preset" | "custom"; note?: string };
 
 const EXAMPLES = [
   "a monkey runs behind a banana chasing it",
@@ -25,7 +29,17 @@ const EXAMPLES = [
   "a snake that eats crypto candles",
   "smash the bricks of the bank",
   "shoot down alien rug pullers in space",
+  "stack falling blocks into a tower without toppling",
+  "a racing car switching lanes to avoid traffic",
 ];
+
+const blobToDataUrl = (b: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(b);
+  });
 
 export function CreateForm() {
   const router = useRouter();
@@ -36,9 +50,11 @@ export function CreateForm() {
   const [ticker, setTicker] = useState("");
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
+  // A generated custom game waiting for the creator to play it and approve it.
+  const [draft, setDraft] = useState<{ config: GameConfig; imageDataUrl: string; crashed: boolean } | null>(null);
   const { toast } = useToast();
-  const configCache = useRef(new Map<string, GameConfig>());
-  const busy = step !== "idle";
+  const configCache = useRef(new Map<string, Generated>());
+  const busy = step !== "idle" && step !== "preview";
 
   async function onFile(f: File | undefined) {
     setError(null);
@@ -51,27 +67,55 @@ export function CreateForm() {
     }
   }
 
-  async function onCreate() {
+  const cacheKey = () => JSON.stringify([prompt.trim(), gameType, ticker]);
+
+  /** Step 1: the AI designs the game, matching a preset or writing a custom one. */
+  async function onCreate(regenerate = false) {
     if (!image || prompt.trim().length < 3) return;
     setError(null);
-    const toastId = toast({ kind: "pending", title: "Creating your game", description: "Generating config…" });
+    setDraft(null);
+    const key = cacheKey();
+    if (regenerate) configCache.current.delete(key);
+    const toastId = toast({ kind: "pending", title: "Designing your game", description: "The AI is matching your idea to a game…" });
     try {
       setStep("config");
-      // Reuse the config from a failed attempt with the same inputs, so a retry doesn't call the LLM again.
-      const cacheKey = JSON.stringify([prompt.trim(), gameType, ticker]);
-      let config = configCache.current.get(cacheKey);
-      if (!config) {
-        const gen = await fetch("/api/generate", {
+      // Reuse the result of a failed launch with the same inputs, so a retry doesn't call the AI again.
+      let gen = configCache.current.get(key);
+      if (!gen) {
+        const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt, gameType: gameType || undefined, ticker: ticker || undefined }),
         });
-        const genJson = await gen.json();
-        if (!gen.ok) throw new Error(genJson.error ?? "Could not generate game");
-        config = genJson.config as GameConfig;
-        configCache.current.set(cacheKey, config);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? "Could not generate game");
+        gen = { config: json.config as GameConfig, mode: json.mode === "custom" ? "custom" : "preset", note: json.note };
+        configCache.current.set(key, gen);
       }
+      if (gen.note) toast({ kind: "info", title: "Using a preset game", description: gen.note });
 
+      if (gen.mode === "custom") {
+        // Let the creator play the AI's game before spending gas on it.
+        setDraft({ config: gen.config, imageDataUrl: await blobToDataUrl(image.blob), crashed: false });
+        setStep("preview");
+        toast({ id: toastId, kind: "success", title: "The AI built a custom game", description: "Play the preview, then launch it." });
+        return;
+      }
+      toast({ id: toastId, kind: "info", title: `Matched: ${GAME_META[gen.config.gameType].label}`, description: "Launching your coin…" });
+      await launch(gen.config, toastId);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      toast({ id: toastId, kind: "error", title: "Couldn't create the game", description: msg });
+      setStep("idle");
+    }
+  }
+
+  /** Step 2: deploy the coin and publish the game (same for presets and approved custom games). */
+  async function launch(config: GameConfig, existingToastId?: string) {
+    if (!image) return;
+    const toastId = existingToastId ?? toast({ kind: "pending", title: `Launching $${config.ticker}`, description: "Deploying your token on Monad…" });
+    try {
       setStep("token");
       toast({ id: toastId, kind: "pending", title: `Launching $${config.ticker}`, description: "Deploying your token on Monad…" });
       const fd = new FormData();
@@ -79,29 +123,36 @@ export function CreateForm() {
       fd.append("config", JSON.stringify(config));
       fd.append("prompt", prompt);
       if (address) fd.append("creator", address);
-      const launch = await fetch("/api/launch", { method: "POST", body: fd });
-      const launchJson = await launch.json();
-      if (!launch.ok) {
+      const res = await fetch("/api/launch", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) {
         // Surface the server's reason (e.g. missing env var, RPC error) instead of a generic message.
-        throw new Error([launchJson.error ?? "Launch failed", launchJson.detail].filter(Boolean).join(" — "));
+        throw new Error([json.error ?? "Launch failed", json.detail].filter(Boolean).join(" — "));
       }
-
       setStep("publish");
-      configCache.current.delete(cacheKey);
+      configCache.current.delete(cacheKey());
       toast({
         id: toastId,
         kind: "success",
-        title: `$${launchJson.ticker} is live on Monad`,
-        description: `${launchJson.tokenName} · block ${launchJson.blockNumber}`,
-        href: explorerTx(launchJson.txHash),
+        title: `$${json.ticker} is live on Monad`,
+        description: `${json.tokenName} · block ${json.blockNumber}`,
+        href: explorerTx(json.txHash),
       });
-      router.push(`/game/${launchJson.id}?new=1`);
+      router.push(`/game/${json.id}?new=1`);
     } catch (e) {
       const msg = (e as Error).message;
       setError(msg);
       toast({ id: toastId, kind: "error", title: "Launch failed", description: msg });
-      setStep("idle");
+      setStep(draft ? "preview" : "idle");
     }
+  }
+
+  function usePreset() {
+    if (!draft) return;
+    const { code: _c, codeSig: _s, ...rest } = draft.config;
+    const preset: GameConfig = { ...rest, gameType: draft.config.fallbackType ?? "runner" };
+    setDraft(null);
+    void launch(preset);
   }
 
   return (
@@ -153,7 +204,7 @@ export function CreateForm() {
             >
               <option value="">Game: AI picks</option>
               {GAME_TYPES.map((t) => (
-                <option key={t} value={t}>{GAME_META[t].label}</option>
+                <option key={t} value={t}>{t === "custom" ? "AI writes a new game" : GAME_META[t].label}</option>
               ))}
             </select>
             <input
@@ -168,7 +219,7 @@ export function CreateForm() {
       </div>
 
       <button
-        onClick={onCreate}
+        onClick={() => onCreate(false)}
         disabled={busy || !image || prompt.trim().length < 3}
         className="brut-btn mt-5 w-full bg-hot py-4 text-2xl text-white"
       >
@@ -194,6 +245,28 @@ export function CreateForm() {
             );
           })}
         </ol>
+      )}
+      {draft && step === "preview" && (
+        <div className="mt-5 space-y-3" aria-label="Preview your AI-made game">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-xl font-extrabold">Try your AI-made game</h2>
+            <p className="text-xs text-ink/60">
+              It runs isolated from this page. If it&apos;s too janky, regenerate or use the {GAME_META[draft.config.fallbackType ?? "runner"].label} preset.
+            </p>
+          </div>
+          <CustomGamePlayer config={draft.config} imageUrl={draft.imageDataUrl} preview onCrash={() => setDraft((d) => (d ? { ...d, crashed: true } : d))} />
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Button variant="primary" size="lg" disabled={draft.crashed} onClick={() => launch(draft.config)}>
+              Launch ${draft.config.ticker}
+            </Button>
+            <Button size="lg" onClick={() => onCreate(true)}>
+              <Icon name="restart" size={18} /> Regenerate
+            </Button>
+            <Button variant="accent" size="lg" onClick={usePreset}>
+              Use {GAME_META[draft.config.fallbackType ?? "runner"].short} instead
+            </Button>
+          </div>
+        </div>
       )}
       {error && <p className="mt-3 rounded-lg border-2 border-hot bg-hot/10 p-2 text-sm font-bold text-hot">{error}</p>}
       {!address && <p className="mt-3 text-xs opacity-70">No wallet needed to create. Connect one to receive the 1% creator fee.</p>}

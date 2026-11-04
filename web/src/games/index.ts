@@ -1,4 +1,4 @@
-import type { GameType } from "@/lib/game-config";
+import type { GameType, PresetType } from "@/lib/game-config";
 import type { GameFactory } from "./engine";
 import type { IconName } from "@/components/ui/Icon";
 import { flappy } from "./flappy";
@@ -9,7 +9,8 @@ import { snake } from "./snake";
 import { breakout } from "./breakout";
 import { shooter } from "./shooter";
 
-export const GAMES: Record<GameType, GameFactory> = { flappy, runner, dodge, whack, snake, breakout, shooter };
+/** Engines for the hand-built presets. Custom (AI-written) games run in a sandboxed iframe instead. */
+export const GAMES: Record<PresetType, GameFactory> = { flappy, runner, dodge, whack, snake, breakout, shooter };
 
 /** An on-screen button: text label, optional icon, the key code it presses, and its keyboard hint. */
 export type PadButton = { label: string; icon?: IconName; code: string; hint: string; wide?: boolean };
@@ -30,6 +31,8 @@ export const GAME_META: Record<GameType, GameMeta> = {
   snake: { label: "Snake", short: "Snake", controls: "Swipe, arrow keys or WASD to turn", pad: [UP, LEFT, { ...DOWN, label: "Down" }, RIGHT], dpad: true },
   breakout: { label: "Brick Breaker", short: "Breakout", controls: "Drag, ← → or A D to move. Space to serve", pad: [LEFT, action("Serve"), RIGHT] },
   shooter: { label: "Space Shooter", short: "Shooter", controls: "Drag, ← → or A D to aim. Fires automatically", pad: [LEFT, RIGHT] },
+  // AI-written games: controls vary, so offer the common set (arrows + action) on touch screens.
+  custom: { label: "Custom (AI)", short: "Custom", controls: "Arrow keys or WASD, Space to act. Click the game first", pad: [LEFT, action("Action"), RIGHT] },
 };
 
 export const COMMON_KEYS = [
