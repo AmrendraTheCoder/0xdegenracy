@@ -12,6 +12,12 @@ web/         Next.js 15 + Tailwind + wagmi/viem; API routes; canvas engine with 
 supabase/    schema.sql (games table + image bucket)
 ```
 
+## Deployed (Monad testnet, chain 10143)
+
+| Contract | Address |
+|---|---|
+| GameTokenFactory | [`0x11548952e9a5C38EF6A365147a099427B64128eb`](https://testnet.monadvision.com/address/0x11548952e9a5C38EF6A365147a099427B64128eb) (verified on MonadVision and [Monadscan](https://testnet.monadscan.com/address/0x11548952e9a5C38EF6A365147a099427B64128eb)) |
+
 ## Run locally (no accounts needed)
 
 ```bash

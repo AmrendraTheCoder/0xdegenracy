@@ -11,9 +11,17 @@ const Env = z.object({
   // Local inference is slower than hosted APIs; total budget for both attempts.
   LLM_TIMEOUT_MS: z.coerce.number().int().min(2000).max(55000).default(25000),
 
+  // Accepts the key with or without 0x (MetaMask exports it without), quotes or stray whitespace.
   PLATFORM_PRIVATE_KEY: z
     .string()
-    .regex(/^0x[0-9a-fA-F]{64}$/)
+    .transform((v) => {
+      const s = v.trim().replace(/^["']|["']$/g, "").trim();
+      return /^[0-9a-fA-F]{64}$/.test(s) ? `0x${s}` : s;
+    })
+    .refine((v) => /^0x[0-9a-fA-F]{64}$/.test(v), (v) => ({
+      // Never echo the value; length and prefix are enough to debug a paste mistake.
+      message: `PLATFORM_PRIVATE_KEY must be 64 hex characters, optionally prefixed with 0x (got ${v.length} characters${v.startsWith("0x") ? ", starting with 0x" : ""}). Check web/.env for a typo, a truncated paste or an address pasted instead of the key.`,
+    }))
     .optional(),
   RPC_URL: z.string().url().default("https://testnet-rpc.monad.xyz"),
 
