@@ -44,18 +44,24 @@ const mcapOf = (p: number) => (p * COIN_SUPPLY) / 1e18;
 const fmtAxis = (v: number, mode: Mode) =>
   mode === "mcap" ? (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(4)) : (v / 1e18).toExponential(2);
 
-export function CoinChart({ trades, createdAt, accent, height = 380 }: { trades: CoinTrade[]; createdAt: string; accent: string; height?: number }) {
+/** `fill`: grow to the parent's height (terminal layout) instead of using a fixed `height`. */
+export function CoinChart({ trades, createdAt, accent, height: fixedHeight = 380, fill = false }: { trades: CoinTrade[]; createdAt: string; accent: string; height?: number; fill?: boolean }) {
   const [iv, setIv] = useState<Interval>("5m");
   const [mode, setMode] = useState<Mode>("mcap");
   const [hover, setHover] = useState<number | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(720);
+  const [boxH, setBoxH] = useState(fixedHeight);
+  const height = fill ? Math.max(220, boxH) : fixedHeight;
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setWidth(Math.max(280, Math.floor(e.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => {
+      setWidth(Math.max(280, Math.floor(e.contentRect.width)));
+      setBoxH(Math.floor(e.contentRect.height));
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -114,7 +120,7 @@ export function CoinChart({ trades, createdAt, accent, height = 380 }: { trades:
   }
 
   return (
-    <div>
+    <div className={fill ? "flex h-full min-h-0 flex-col" : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-ink/10 px-3 py-2">
         <Segmented<Interval> size="xs" label="Candle interval" value={iv} onChange={setIv} options={(Object.keys(INTERVALS) as Interval[]).map((k) => ({ value: k, label: k }))} />
         <Segmented<Mode>
@@ -148,7 +154,7 @@ export function CoinChart({ trades, createdAt, accent, height = 380 }: { trades:
         )}
       </div>
 
-      <div ref={box} className="relative w-full select-none">
+      <div ref={box} className={cn("relative w-full select-none", fill && "min-h-0 flex-1 overflow-hidden")}>
         <svg
           width={width}
           height={height}

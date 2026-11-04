@@ -228,3 +228,44 @@ canvas.game:focus-visible {
     overflow-x: auto;
   }
 }
+
+/* ---------------------------------------------------------------- trading terminal (coin + game view) */
+:root {
+  /* Height of the sticky site header; the terminal fills the rest of the screen. */
+  --site-header-h: 65px;
+}
+body {
+  overflow-x: clip;
+}
+/* Break out of the centred page container to use the full browser width. */
+.terminal-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+@media (min-width: 1024px) {
+  /* Each column scrolls on its own, so the page itself never has to. */
+  .terminal-col {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+  }
+  /* Shared height for the game and the chart, sized to the screen. */
+  .terminal-stage {
+    --stage-h: clamp(420px, calc(100dvh - var(--site-header-h) - 140px), 680px);
+  }
+  /* Fit either game player (canvas or sandboxed iframe) to the stage: 150px is its toolbar and hints. */
+  .terminal-game :is(canvas.game, iframe) {
+    height: calc(var(--stage-h) - 150px) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+@media (min-width: 1280px) {
+  /* Side by side with the chart: size the game column from its canvas (2:3) plus the frame, so its
+     hint row wraps inside it instead of stretching the column. */
+  .terminal-game {
+    width: calc((var(--stage-h) - 150px) * 2 / 3 + 60px);
+  }
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { Address } from "viem";
 import { GamePlayer } from "@/components/GamePlayer";
+import { CoinView } from "@/components/coin/CoinView";
 import { PriceChart } from "@/components/PriceChart";
 import { TokenPanel } from "@/components/TokenPanel";
 import { MobileTradeBar } from "@/components/token/MobileTradeBar";
@@ -36,6 +37,8 @@ export default async function GamePage({ params }: Props) {
   if (!game || game.status === "failed") notFound();
   const c = game.config;
   const token = game.token_address as Address | null;
+  // Live coins get the full-screen terminal: game + chart + trading + holders, all in one view.
+  if (token && game.status === "live") return <CoinView id={game.id} config={c} token={token} imageUrl={game.image_url} />;
   const meta = GAME_META[c.gameType];
   // The launch event carries block and gas data; older games launched before the event log have none.
   const [launch] = await getStore()

@@ -13,6 +13,8 @@ import { fmtTokens, short, timeAgo } from "@/lib/format";
 import { TRADE_EVENT } from "@/lib/useTx";
 import { GAME_META } from "@/games";
 import { TokenPanel } from "@/components/TokenPanel";
+import { GamePlayer } from "@/components/GamePlayer";
+import { MobileTradeBar } from "@/components/token/MobileTradeBar";
 import { AddressLink, Badge, CopyButton, Skeleton, buttonClasses, cn } from "@/components/ui";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Segmented } from "@/components/ui/Segmented";
@@ -57,12 +59,19 @@ export function CoinView({ id, config, token, imageUrl }: { id: string; config: 
 
   const d = q.data;
 
+  /*
+   * Terminal layout. On desktop the whole view is one screen: full browser width, exactly the
+   * viewport height under the site header, and every column scrolls on its own (no page scroll).
+   * Phones get a normal stacked page: game, chart, trade, stats, details, feed.
+   */
   return (
-    <div className="space-y-5 pb-6">
-      <CoinHeader data={d} config={config} imageUrl={imageUrl} token={token} id={id} />
+    <div className="terminal-bleed -mt-6 flex flex-col gap-3 px-3 pb-24 pt-3 sm:-mt-8 lg:h-[calc(100dvh-var(--site-header-h))] lg:pb-3">
+      <div className="shrink-0">
+        <CoinHeader data={d} config={config} imageUrl={imageUrl} token={token} id={id} />
+      </div>
 
       {q.isError && !d && (
-        <div className="brut bg-white p-4 text-sm">
+        <div className="brut shrink-0 bg-white p-3 text-sm">
           Couldn&apos;t load live data: {(q.error as Error).message}{" "}
           <button className="font-bold underline" onClick={() => q.refetch()}>
             Retry
@@ -70,32 +79,44 @@ export function CoinView({ id, config, token, imageUrl }: { id: string; config: 
         </div>
       )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[280px_minmax(0,1fr)_360px]">
-        {/* Left: live activity across the site (xl only; it moves to the bottom on smaller screens) */}
-        <aside className="hidden xl:block">
-          <LivePanel />
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(210px,250px)_minmax(0,1fr)_340px] 2xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+        {/* Left: live activity across the site (wide screens only; it moves to the bottom elsewhere) */}
+        <aside className="hidden min-h-0 xl:block">
+          <LivePanel fill />
         </aside>
 
-        {/* Centre: chart + holders / trades / about */}
-        <div className="min-w-0 space-y-5">
-          <section aria-label="Chart" className="brut overflow-hidden bg-white">
-            {d ? <CoinChart trades={d.trades} createdAt={d.game.createdAt} accent={config.colors.accent} /> : <Skeleton className="m-3 h-[420px]" />}
-          </section>
+        {/* Centre: game + chart side by side, details below */}
+        <div className="terminal-col min-w-0 space-y-3">
+          <div className="terminal-stage flex flex-col gap-3 xl:flex-row">
+            <section aria-label="Play" className="terminal-game min-w-0 shrink-0 xl:w-auto">
+              <GamePlayer config={config} imageUrl={imageUrl} gameId={id} tradeHref="#trade" />
+            </section>
+            <section aria-label="Chart" className="brut min-w-0 flex-1 overflow-hidden bg-white lg:h-[var(--stage-h)]">
+              {d ? (
+                <CoinChart trades={d.trades} createdAt={d.game.createdAt} accent={config.colors.accent} fill />
+              ) : (
+                <Skeleton className="m-3 h-[calc(100%-24px)] min-h-64" />
+              )}
+            </section>
+          </div>
           <BottomTabs data={d} />
         </div>
 
         {/* Right: trade, stats, pool, creator */}
-        <div className="min-w-0 space-y-5">
+        <div className="terminal-col min-w-0 space-y-3">
           <TokenPanel token={token} config={config} imageUrl={imageUrl} id="trade" />
           <StatsCard data={d} />
           <PoolCard data={d} />
           <CreatorCard data={d} />
+          {/* Below xl the feed has no column of its own; it lives at the end of this one so it never
+              takes height away from the terminal. */}
+          <div className="xl:hidden">
+            <LivePanel />
+          </div>
         </div>
       </div>
 
-      <div className="xl:hidden">
-        <LivePanel />
-      </div>
+      <MobileTradeBar token={token} ticker={config.ticker} targetId="trade" />
     </div>
   );
 }
@@ -515,7 +536,7 @@ function About({ data: d }: { data: CoinData }) {
 
 // ---------------------------------------------------------------- live feed (site-wide)
 
-function LivePanel() {
+function LivePanel({ fill = false }: { fill?: boolean }) {
   const q = useQuery({
     queryKey: ["discover", "24h"],
     refetchInterval: 8000,
@@ -526,7 +547,7 @@ function LivePanel() {
     },
   });
   return (
-    <section aria-label="Live activity" className="brut overflow-hidden bg-white">
+    <section aria-label="Live activity" className={cn("brut flex flex-col overflow-hidden bg-white", fill && "h-full")}>
       <header className="flex items-center justify-between border-b-2 border-ink/10 px-3 py-2.5">
         <h2 className="flex items-center gap-1.5 text-base font-extrabold">
           <Icon name="activity" size={16} /> Live
@@ -535,7 +556,7 @@ function LivePanel() {
           Discover
         </Link>
       </header>
-      <div className="max-h-[70vh] overflow-y-auto">
+      <div className={cn("overflow-y-auto", fill ? "min-h-0 flex-1" : "max-h-[70vh]")}>
         {q.data ? <Feed events={q.data.feed.slice(0, 30)} /> : <div className="space-y-2 p-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>}
       </div>
     </section>
