@@ -22,30 +22,16 @@ export async function generateConfig(input: {
   const e = env();
   if (!e.LLM_BASE_URL) return { config: heuristicConfig(input.prompt, overrides), source: "fallback" };
 
+  const deadline = Date.now() + e.LLM_TIMEOUT_MS;
+  const messages = [
+    { role: "system", content: SYSTEM },
+    { role: "user", content: `Idea: ${input.prompt}${input.gameType ? `\nUse gameType: ${input.gameType}` : ""}` },
+  ];
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12_000);
-    const res = await fetch(`${e.LLM_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: {
-        "Content-Type": "application/json",
-        ...(e.LLM_API_KEY ? { Authorization: `Bearer ${e.LLM_API_KEY}` } : {}),
-      },
-      body: JSON.stringify({
-        model: e.LLM_MODEL,
-        temperature: 0.9,
-        max_tokens: 400,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          {
-            role: "user",
-            content: `Idea: ${input.prompt}${input.gameType ? `\nUse gameType: ${input.gameType}` : ""}`,
-          },
-        ],
-      }),
-    }).finally(() => clearTimeout(timer));
+    // Hosted models honour JSON mode. Many local models (via OmniRoute → Ollama, LM Studio, llama.cpp)
+    // reject `response_format`, so retry once without it on a 400/422.
+    let res = await chat(e, messages, true, deadline);
+    if (res.status === 400 || res.status === 422) res = await chat(e, messages, false, deadline);
     if (!res.ok) throw new Error(`LLM ${res.status}`);
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     const text = data.choices?.[0]?.message?.content ?? "";
@@ -57,7 +43,28 @@ export async function generateConfig(input: {
   }
 }
 
+function chat(e: ReturnType<typeof env>, messages: { role: string; content: string }[], jsonMode: boolean, deadline: number) {
+  return fetch(`${e.LLM_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())),
+    headers: {
+      "Content-Type": "application/json",
+      ...(e.LLM_API_KEY ? { Authorization: `Bearer ${e.LLM_API_KEY}` } : {}),
+    },
+    body: JSON.stringify({
+      model: e.LLM_MODEL,
+      temperature: 0.9,
+      max_tokens: 600,
+      stream: false,
+      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
+      messages,
+    }),
+  });
+}
+
 function extractJson(text: string): string {
+  // Reasoning models (DeepSeek-R1, Qwen3…) may emit <think>…</think> before the answer; drop it.
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/```(?:json)?/gi, "");
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("no json in response");

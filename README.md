@@ -40,6 +40,39 @@ cd web && npm install && npm run dev
 With Supabase vars empty, data goes to `web/.data/`. With `LLM_BASE_URL` empty, configs come from
 the offline generator.
 
+## Local inference with OmniRoute
+
+Reachy sends every LLM call to [OmniRoute](https://github.com/cheaper-inference/OmniRoute), a local
+OpenAI-compatible gateway, so you can swap models or providers without code changes.
+
+```bash
+npm install -g omniroute
+```
+
+```bash
+omniroute
+```
+
+Open the dashboard at http://localhost:20128, connect a provider (for fully local inference, add
+the **Ollama** provider with a model you've pulled, such as `qwen3:8b`), then create an API key.
+In `web/.env`:
+
+```ini
+LLM_BASE_URL=http://localhost:20128/v1
+LLM_API_KEY=<OmniRoute API key>
+LLM_MODEL=auto            # or a combo name / a specific model id
+LLM_TIMEOUT_MS=25000
+```
+
+The client works with local models: if a model rejects JSON mode, it retries without it, removes
+`<think>` blocks, and validates and clamps every field. If OmniRoute is down or times out, the
+offline generator is used, so creating a game never blocks.
+
+**Deployed on Vercel?** Vercel can't reach your `localhost`. Expose OmniRoute over HTTPS with a
+tunnel (OmniRoute's Docker guide covers Cloudflare tunnels, or run
+`cloudflared tunnel --url http://localhost:20128`), keep your laptop running during the demo, and
+set `LLM_BASE_URL` on Vercel to `https://<tunnel-host>/v1`.
+
 ## Deploy to Monad testnet
 
 ```bash

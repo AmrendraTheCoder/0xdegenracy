@@ -3,11 +3,13 @@ import { z } from "zod";
 
 // Server-only secrets. Never import this from a client component.
 const Env = z.object({
-  // OpenAI-compatible endpoint. Point at your OmniRoute gateway (e.g. https://omniroute.yourhost.com/v1)
-  // or any provider directly. If unset, /api/generate uses the offline heuristic generator.
+  // OpenAI-compatible endpoint. Local OmniRoute: http://localhost:20128/v1 (key from its dashboard).
+  // If unset or unreachable, /api/generate uses the offline heuristic generator.
   LLM_BASE_URL: z.string().url().optional(),
   LLM_API_KEY: z.string().optional(),
   LLM_MODEL: z.string().default("auto"),
+  // Local inference is slower than hosted APIs; total budget for both attempts.
+  LLM_TIMEOUT_MS: z.coerce.number().int().min(2000).max(55000).default(25000),
 
   PLATFORM_PRIVATE_KEY: z
     .string()

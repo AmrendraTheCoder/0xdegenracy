@@ -4,6 +4,7 @@ import { generateConfig } from "@/lib/server/llm";
 import { clientIp, rateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
+export const maxDuration = 60; // local inference can be slow
 
 // POST /api/generate  { prompt, gameType?, ticker? }  ->  { config, source }
 export async function POST(req: Request) {

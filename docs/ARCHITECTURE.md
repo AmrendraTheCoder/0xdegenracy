@@ -56,7 +56,7 @@ without our database.
 | Decision | Why |
 |---|---|
 | LLM returns **only JSON**, never code | Generation can't break the page. `normalizeConfig` clamps and defaults every field. |
-| **OmniRoute** as the LLM gateway | It exposes an OpenAI-compatible `/v1/chat/completions`, so the app speaks one protocol and you swap models or providers in OmniRoute, not in code. |
+| **OmniRoute** as the LLM gateway, running locally | It exposes an OpenAI-compatible `/v1/chat/completions` on `localhost:20128`, so the app speaks one protocol and you swap models or providers (including local Ollama) in OmniRoute, not in code. The client retries without JSON mode for local models that reject it, removes `<think>` blocks, and has a 25 s budget. Production reaches it through an HTTPS tunnel. |
 | **Offline heuristic fallback** | Demo never blocks on an LLM outage, a missing key or a timeout (12 s). |
 | Platform wallet signs launches | Creator needs no wallet (doc §8.2). The creator address gets the fee if one is connected. |
 | `eth_sendRawTransactionSync` server-side | Monad returns the receipt in one RPC call (~300 ms blocks), so no polling. |
