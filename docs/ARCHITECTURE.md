@@ -28,7 +28,7 @@ image + prompt ──► /api/generate ──► GameConfig (JSON only, validate
 
 ```
 ┌────────────── Browser ──────────────┐        ┌──────── Vercel (Next.js 15) ────────┐
-│ CreateForm: crop→256² WebP          │  HTTP  │ /api/generate → OmniRoute (OpenAI-  │
+│ CreateForm: crop→256² WebP          │  HTTP  │ /api/generate → Gemini (OpenAI-     │
 │ GamePlayer: shared canvas engine    │ ─────► │                 compatible) or      │
 │ TokenPanel: wagmi reads + buy()     │        │                 offline heuristic   │
 └───────┬─────────────────────────────┘        │ /api/launch  → Supabase + viem      │
@@ -56,7 +56,7 @@ without our database.
 | Decision | Why |
 |---|---|
 | LLM returns **only JSON**, never code | Generation can't break the page. `normalizeConfig` clamps and defaults every field. |
-| **OmniRoute** as the LLM gateway, running locally | It exposes an OpenAI-compatible `/v1/chat/completions` on `localhost:20128`, so the app speaks one protocol and you swap models or providers (including local Ollama) in OmniRoute, not in code. The client retries without JSON mode for local models that reject it, removes `<think>` blocks, and has a 25 s budget. Production reaches it through an HTTPS tunnel. |
+| **Gemini** through its OpenAI-compatible endpoint | The app speaks one protocol (chat completions), selected in `lib/server/ai.ts`: Gemini with `GEMINI_API_KEY`, or any other OpenAI-compatible endpoint via `LLM_BASE_URL`. The client retries without JSON mode if an endpoint rejects it, removes `<think>` blocks, and leaves token room for Gemini 2.5 thinking. |
 | **Offline heuristic fallback** | Demo never blocks on an LLM outage, a missing key or a timeout (12 s). |
 | Platform wallet signs launches | Creator needs no wallet (doc §8.2). The creator address gets the fee if one is connected. |
 | `eth_sendRawTransactionSync` server-side | Monad returns the receipt in one RPC call (~300 ms blocks), so no polling. |
@@ -162,7 +162,7 @@ and 0.01 MON buys about 72.6M tokens. `launch()` costs about 1.1M gas.
   game types rendered without console errors on desktop and at a 375 px mobile width.
 - **Not yet verified:** a real wallet buy from the UI (covered by contract tests, not clicked through
   in a browser), gameplay feel at full frame rate (the test browser was throttled to 2 fps), the real
-  LLM path through OmniRoute, Supabase, and Monad testnet itself.
+  AI path through Gemini, Supabase, and Monad testnet itself.
 
 ## 3. Reviewer: issues found and fixed during the build
 

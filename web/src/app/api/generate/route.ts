@@ -6,7 +6,7 @@ import { logError } from "@/lib/server/log";
 import { clientIp, rateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 90; // config + code generation on local inference can be slow
+export const maxDuration = 120; // config (~5s) + custom game code (up to ~70s with one repair attempt)
 
 export type GenerateResponse = {
   config: GameConfig;

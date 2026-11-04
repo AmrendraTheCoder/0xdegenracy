@@ -65,41 +65,23 @@ cd web && cp .env.example .env.local   # set NEXT_PUBLIC_FACTORY_ADDRESS, both R
 cd web && npm install && npm run dev
 ```
 
-With Supabase vars empty, data goes to `web/.data/`. With `LLM_BASE_URL` empty, configs come from
-the offline generator.
+With Supabase vars empty, data goes to `web/.data/`. With no AI key, configs come from the offline
+generator (presets only).
 
-## Local inference with OmniRoute
+## AI (Gemini)
 
-0xdegenracy sends every LLM call to [OmniRoute](https://github.com/cheaper-inference/OmniRoute), a local
-OpenAI-compatible gateway, so you can swap models or providers without code changes.
-
-```bash
-npm install -g omniroute
-```
-
-```bash
-omniroute
-```
-
-Open the dashboard at http://localhost:20128, connect a provider (for fully local inference, add
-the **Ollama** provider with a model you've pulled, such as `qwen3:8b`), then create an API key.
-In `web/.env`:
+The AI turns an idea into a game: it picks one of the 7 presets, or writes a custom game that runs in a
+sandboxed iframe. Get a key at https://aistudio.google.com/apikey and set it in `web/.env` and on
+Vercel:
 
 ```ini
-LLM_BASE_URL=http://localhost:20128/v1
-LLM_API_KEY=<OmniRoute API key>
-LLM_MODEL=auto            # or a combo name / a specific model id
-LLM_TIMEOUT_MS=25000
+GEMINI_API_KEY=<your key>
+GEMINI_MODEL=gemini-2.5-flash   # optional; any Gemini model id
 ```
 
-The client works with local models: if a model rejects JSON mode, it retries without it, removes
-`<think>` blocks, and validates and clamps every field. If OmniRoute is down or times out, the
-offline generator is used, so creating a game never blocks.
-
-**Deployed on Vercel?** Vercel can't reach your `localhost`. Expose OmniRoute over HTTPS with a
-tunnel (OmniRoute's Docker guide covers Cloudflare tunnels, or run
-`cloudflared tunnel --url http://localhost:20128`), keep your laptop running during the demo, and
-set `LLM_BASE_URL` on Vercel to `https://<tunnel-host>/v1`.
+It uses Gemini's OpenAI-compatible endpoint. A Google-format key (`AIza…`) in `LLM_API_KEY` also
+works. If the AI is unavailable or times out, the offline generator picks a preset, so creating a game
+never blocks.
 
 ## Deploy to Monad testnet
 

@@ -3,8 +3,12 @@ import { z } from "zod";
 
 // Server-only secrets. Never import this from a client component.
 const Env = z.object({
-  // OpenAI-compatible endpoint. Local OmniRoute: http://localhost:20128/v1 (key from its dashboard).
-  // If unset or unreachable, /api/generate uses the offline heuristic generator.
+  // AI endpoint selection lives in lib/server/ai.ts. With no key, /api/generate uses the offline generator.
+  // Gemini (Google AI Studio key). Used through Gemini's OpenAI-compatible endpoint. See lib/server/ai.ts.
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  GEMINI_BASE_URL: z.string().url().default("https://generativelanguage.googleapis.com/v1beta/openai"),
+  // Optional override: any other OpenAI-compatible endpoint (e.g. a self-hosted gateway).
   LLM_BASE_URL: z.string().url().optional(),
   LLM_API_KEY: z.string().optional(),
   LLM_MODEL: z.string().default("auto"),

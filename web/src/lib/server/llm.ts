@@ -1,5 +1,6 @@
 import "server-only";
 import { env } from "./env";
+import { aiChat, aiEndpoint, aiText, type ChatMessage } from "./ai";
 import { normalizeConfig, type GameConfig, type GameType } from "../game-config";
 
 const SYSTEM = `You turn a one-line meme game idea into a JSON game config. Reply with ONE JSON object only, no prose.
@@ -18,54 +19,33 @@ tokenName must be a punchy, original coin name that is NOT just the title plus "
 Tone: degen, funny, short. Bright flat colors with readable fg on bg.
 Never use existing brands, trademarked characters, or real people's names.`;
 
-/** Calls the OpenAI-compatible endpoint (OmniRoute). Falls back to an offline config on any failure. */
+/** Asks the AI (Gemini by default, see ai.ts) for a config. Falls back to an offline config on any failure. */
 export async function generateConfig(input: {
   prompt: string;
   gameType?: GameType;
   ticker?: string;
 }): Promise<{ config: GameConfig; source: "llm" | "fallback" }> {
   const overrides = { gameType: input.gameType, ticker: input.ticker };
-  const e = env();
-  if (!e.LLM_BASE_URL) return { config: heuristicConfig(input.prompt, overrides), source: "fallback" };
+  const ep = aiEndpoint();
+  if (!ep) return { config: heuristicConfig(input.prompt, overrides), source: "fallback" };
 
-  const deadline = Date.now() + e.LLM_TIMEOUT_MS;
-  const messages = [
+  const deadline = Date.now() + env().LLM_TIMEOUT_MS;
+  const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM },
     { role: "user", content: `Idea: ${input.prompt}${input.gameType ? `\nUse gameType: ${input.gameType}` : ""}` },
   ];
+  // 2000 tokens leaves room for Gemini 2.5's thinking before the ~300-token JSON answer.
+  const opts = { maxTokens: 2000, temperature: 0.9, deadline };
   try {
-    // Hosted models honour JSON mode. Many local models (via OmniRoute to Ollama, LM Studio, llama.cpp)
-    // reject `response_format`, so retry once without it on a 400/422.
-    let res = await chat(e, messages, true, deadline);
-    if (res.status === 400 || res.status === 422) res = await chat(e, messages, false, deadline);
-    if (!res.ok) throw new Error(`LLM ${res.status}`);
-    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-    const text = data.choices?.[0]?.message?.content ?? "";
-    const json = JSON.parse(extractJson(text));
+    // Most endpoints honour JSON mode; some reject `response_format`, so retry once without it on 400/422.
+    let res = await aiChat(ep, messages, { ...opts, jsonMode: true });
+    if (res.status === 400 || res.status === 422) res = await aiChat(ep, messages, opts);
+    const json = JSON.parse(extractJson(await aiText(res)));
     return { config: normalizeConfig(json, overrides), source: "llm" };
   } catch (err) {
-    console.warn("[llm] falling back:", (err as Error).message);
+    console.warn(`[ai:${ep.provider}] falling back:`, (err as Error).message);
     return { config: heuristicConfig(input.prompt, overrides), source: "fallback" };
   }
-}
-
-function chat(e: ReturnType<typeof env>, messages: { role: string; content: string }[], jsonMode: boolean, deadline: number) {
-  return fetch(`${e.LLM_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())),
-    headers: {
-      "Content-Type": "application/json",
-      ...(e.LLM_API_KEY ? { Authorization: `Bearer ${e.LLM_API_KEY}` } : {}),
-    },
-    body: JSON.stringify({
-      model: e.LLM_MODEL,
-      temperature: 0.9,
-      max_tokens: 600,
-      stream: false,
-      ...(jsonMode ? { response_format: { type: "json_object" } } : {}),
-      messages,
-    }),
-  });
 }
 
 function extractJson(text: string): string {

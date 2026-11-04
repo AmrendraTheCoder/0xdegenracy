@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { env } from "./env";
+import { aiChat, aiEndpoint, aiText, type ChatMessage } from "./ai";
 import { MAX_GAME_CODE, type GameConfig } from "../game-config";
 
 /**
@@ -116,30 +117,20 @@ function extractCode(text: string): string {
   return start >= 0 ? body.slice(start) : body;
 }
 
-async function chatOnce(messages: { role: string; content: string }[], deadline: number): Promise<string> {
-  const e = env();
-  const res = await fetch(`${e.LLM_BASE_URL!.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())),
-    headers: { "Content-Type": "application/json", ...(e.LLM_API_KEY ? { Authorization: `Bearer ${e.LLM_API_KEY}` } : {}) },
-    body: JSON.stringify({ model: e.LLM_MODEL, temperature: 0.5, max_tokens: 3500, stream: false, messages }),
-  });
-  if (!res.ok) throw new Error(`LLM ${res.status}`);
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return data.choices?.[0]?.message?.content ?? "";
-}
-
 /**
  * Asks the model for a game, checks it, and gives the model one chance to fix a failed check.
  * Throws with a short reason if no valid game comes back in time.
  */
 export async function generateGameCode(idea: string, cfg: GameConfig): Promise<string> {
-  if (!env().LLM_BASE_URL) throw new Error("AI code generation needs LLM_BASE_URL (OmniRoute) configured");
-  const deadline = Date.now() + 50_000;
+  const ep = aiEndpoint();
+  if (!ep) throw new Error("AI code generation needs GEMINI_API_KEY configured");
+  const deadline = Date.now() + 70_000;
+  // ~3k tokens of code plus Gemini 2.5's thinking, which counts against the same limit.
+  const chatOnce = async (msgs: ChatMessage[]) => aiText(await aiChat(ep, msgs, { maxTokens: 12_000, temperature: 0.5, deadline }));
   const brief = `Game idea: ${idea}
 Title: ${cfg.title}. Things to avoid are called "${cfg.obstacleLabel}", things to collect "${cfg.goodItemLabel}", score unit "${cfg.scoreLabel}".
 Colors: bg ${cfg.colors.bg}, fg ${cfg.colors.fg}, accent ${cfg.colors.accent}. Difficulty speed ${cfg.difficulty.speed}.`;
-  const messages = [
+  const messages: ChatMessage[] = [
     { role: "system", content: CONTRACT },
     { role: "user", content: "Example idea: dodge falling rocks." },
     { role: "assistant", content: EXAMPLE },
@@ -147,7 +138,7 @@ Colors: bg ${cfg.colors.bg}, fg ${cfg.colors.fg}, accent ${cfg.colors.accent}. D
   ];
   let reason = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const text = await chatOnce(messages, deadline);
+    const text = await chatOnce(messages);
     const check = checkGameCode(extractCode(text));
     if (check.ok) return check.code;
     reason = check.reason;
