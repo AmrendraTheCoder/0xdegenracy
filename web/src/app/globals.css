@@ -112,7 +112,7 @@ kbd {
   gap: 0.35rem;
   border: 2px solid transparent;
   border-radius: 999px;
-  padding: 0.35rem 0.5rem;
+  padding: 0.35rem 0.4rem;
   font-weight: 700;
   transition: background-color 120ms ease;
 }
@@ -202,5 +202,29 @@ canvas.game:focus-visible {
 @media (min-width: 640px) {
   .nav-link {
     padding: 0.3rem 0.7rem;
+  }
+}
+
+/* Discover ticker: a seamless horizontal loop (content is duplicated in the markup). */
+.ticker-track {
+  animation: ticker 40s linear infinite;
+}
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-mask {
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  .ticker-mask {
+    overflow-x: auto;
   }
 }

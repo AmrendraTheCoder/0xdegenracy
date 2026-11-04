@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "./ui/Icon";
 
 const LINKS = [
+  { href: "/discover", icon: "compass", label: "Discover" },
   { href: "/leaderboard", icon: "trophy", label: "Leaderboard" },
   { href: "/portfolio", icon: "wallet", label: "Portfolio" },
   { href: "/activity", icon: "activity", label: "Activity" },

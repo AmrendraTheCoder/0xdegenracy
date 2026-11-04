@@ -28,9 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <Providers>
           <header className="sticky top-0 z-20 border-b-[3px] border-ink bg-banana/95 backdrop-blur supports-[backdrop-filter]:bg-banana/85">
-            <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-2.5">
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
-                <Link href="/" className="shrink-0 font-[family-name:var(--font-display)] text-xl font-extrabold tracking-tight sm:text-2xl" aria-label="0xdegenracy home">
+                <Link href="/" className="shrink-0 font-[family-name:var(--font-display)] text-lg font-extrabold tracking-tight min-[400px]:text-xl sm:text-2xl" aria-label="0xdegenracy home">
                   <span className="text-hot-strong">0x</span>degenracy
                 </Link>
                 <NavLinks />
@@ -38,11 +38,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <ConnectButton />
             </div>
           </header>
-          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
+          <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
             {children}
           </main>
           <footer className="border-t-[3px] border-ink bg-white/60">
-            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+            <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between">
               <p className="opacity-80">
                 <span className="font-[family-name:var(--font-display)] font-extrabold">0xdegenracy</span> · every coin ships with a game. Monad
                 testnet only. Tokens have no value. Play responsibly, degen.

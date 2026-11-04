@@ -35,6 +35,8 @@ const PATHS = {
   keyboard: "M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10",
   coins: "M9 14a6 3 0 1 0 0-6 6 3 0 0 0 0 6ZM3 11v4c0 1.7 2.7 3 6 3s6-1.3 6-3v-4M15 9.3c3.4.2 6 1.5 6 3v4c0 1.6-2.6 3-6 3",
   spark: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18",
+  search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14ZM20 20l-3.5-3.5",
+  compass: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM15.5 8.5l-2 5-5 2 2-5 5-2Z",
 } as const;
 
 export type IconName = keyof typeof PATHS;
