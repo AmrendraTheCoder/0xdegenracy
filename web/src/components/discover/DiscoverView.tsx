@@ -82,7 +82,7 @@ export function DiscoverView() {
               className="w-full rounded-xl border-[3px] border-ink bg-white py-2 pl-9 pr-3 text-sm font-medium shadow-[3px_3px_0_#141414] outline-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-grape/30"
             />
           </label>
-          <Link href="/" className={buttonClasses({ variant: "primary", size: "sm" })}>
+          <Link href="/?create=1" scroll={false} className={buttonClasses({ variant: "primary", size: "sm" })}>
             <Icon name="spark" size={16} /> Create
           </Link>
         </div>
@@ -512,7 +512,7 @@ function Leaders({ data, board }: { data?: DiscoverResponse; board: Board }) {
             ? "1% of every trade funds a daily prize pool split between the top 10 traders by volume."
             : "Launch a game and earn 1% of every buy and sell of its coin, forever."}
         </p>
-        <Link href={board === "traders" ? "/leaderboard" : "/"} className="mt-2 inline-flex items-center gap-1 font-bold underline">
+        <Link href={board === "traders" ? "/leaderboard" : "/?create=1"} scroll={false} className="mt-2 inline-flex items-center gap-1 font-bold underline">
           {board === "traders" ? "See the prize pool" : "Create a game"} <Icon name="arrowRight" size={14} />
         </Link>
       </div>

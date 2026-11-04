@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import { DiscoverView } from "@/components/discover/DiscoverView";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Discover — 0xdegenracy",
-  description: "Trending coins, live trades and top traders on 0xdegenracy. Every coin ships with a game.",
-};
-
+/** Discover is the home page now; keep old /discover links working. */
 export default function DiscoverPage() {
-  return <DiscoverView />;
+  redirect("/");
 }

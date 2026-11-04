@@ -38,7 +38,7 @@ export default async function GamePage({ params }: Props) {
   const c = game.config;
   const token = game.token_address as Address | null;
   // Live coins get the full-screen terminal: game + chart + trading + holders, all in one view.
-  if (token && game.status === "live") return <CoinView id={game.id} config={c} token={token} imageUrl={game.image_url} />;
+  if (token && game.status === "live") return <CoinView id={game.id} config={c} token={token} imageUrl={game.image_url} focus="game" />;
   const meta = GAME_META[c.gameType];
   // The launch event carries block and gas data; older games launched before the event log have none.
   const [launch] = await getStore()

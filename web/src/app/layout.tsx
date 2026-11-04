@@ -5,6 +5,8 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { ConnectButton } from "@/components/ConnectButton";
 import { NavLinks } from "@/components/NavLinks";
+import { CreateButton, CreateModal } from "@/components/CreateModal";
+import { Suspense } from "react";
 import { explorerAddress, FACTORY_ADDRESS, FAUCET_URL } from "@/lib/chain";
 import { Icon } from "@/components/ui/Icon";
 
@@ -35,9 +37,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
                 <NavLinks />
               </div>
-              <ConnectButton />
+              <div className="flex shrink-0 items-center gap-2">
+                <Suspense fallback={null}>
+                  <CreateButton />
+                </Suspense>
+                <ConnectButton />
+              </div>
             </div>
           </header>
+          <Suspense fallback={null}>
+            <CreateModal />
+          </Suspense>
           <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
             {children}
           </main>

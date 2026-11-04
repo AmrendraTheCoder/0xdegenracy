@@ -6,6 +6,7 @@ export { CopyButton } from "./CopyButton";
 export { ErrorState, Notice, type NoticeTone } from "./Notice";
 export { NumberInput, PresetGroup, type NumberInputProps, type Preset } from "./NumberInput";
 export { ProgressBar } from "./ProgressBar";
+export { Loader } from "./Loader";
 export { Skeleton } from "./Skeleton";
 export { Stat, StatGrid } from "./Stat";
 export { TabPanel, Tabs, type TabItem } from "./Tabs";

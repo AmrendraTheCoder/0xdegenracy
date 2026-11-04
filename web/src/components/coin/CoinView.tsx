@@ -38,7 +38,12 @@ const fmtMonNum = (v: number, d = 4) => (v === 0 ? "0" : Math.abs(v) < 10 ** -d 
 const STAT_WINDOWS = { "5m": 300_000, "1h": 3_600_000, "24h": 86_400_000 } as const;
 type StatWindow = keyof typeof STAT_WINDOWS;
 
-export function CoinView({ id, config, token, imageUrl }: { id: string; config: GameConfig; token: Address; imageUrl: string }) {
+/**
+ * `focus="chart"` (the /coin page): chart-first trading terminal.
+ * `focus="game"` (the /game page): the game takes the left half of the screen; trading sits on the
+ * right with everything else (chart, holders, trades, stats, live feed, about) one tab away.
+ */
+export function CoinView({ id, config, token, imageUrl, focus = "chart" }: { id: string; config: GameConfig; token: Address; imageUrl: string; focus?: "chart" | "game" }) {
   const q = useQuery({
     queryKey: ["coin", id],
     refetchInterval: 6000,
@@ -58,6 +63,32 @@ export function CoinView({ id, config, token, imageUrl }: { id: string; config: 
   }, [refetch]);
 
   const d = q.data;
+
+  if (focus === "game") {
+    return (
+      <div className="terminal-bleed -mt-6 flex flex-col gap-3 px-3 pb-24 pt-3 sm:-mt-8 lg:h-[calc(100dvh-var(--site-header-h))] lg:pb-3">
+        <div className="shrink-0">
+          <CoinHeader data={d} config={config} imageUrl={imageUrl} token={token} id={id} hidePlay />
+        </div>
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+          {/* Left half: the game, as big as the space allows */}
+          <section aria-label="Play" className="terminal-hero min-w-0">
+            <GamePlayer config={config} imageUrl={imageUrl} gameId={id} tradeHref="#trade" />
+          </section>
+          {/* Right half: trade + everything else behind tabs */}
+          <div className="terminal-col-lg min-w-0 space-y-3 xl:grid xl:h-full xl:min-h-0 xl:grid-cols-[minmax(0,1fr)_340px] xl:gap-3 xl:space-y-0">
+            <div className="terminal-col-xl min-w-0 xl:order-2">
+              <TokenPanel token={token} config={config} imageUrl={imageUrl} id="trade" />
+            </div>
+            <div className="terminal-col-xl min-w-0 xl:order-1">
+              <MoreTabs data={d} accent={config.colors.accent} />
+            </div>
+          </div>
+        </div>
+        <MobileTradeBar token={token} ticker={config.ticker} targetId="trade" />
+      </div>
+    );
+  }
 
   /*
    * Terminal layout. On desktop the whole view is one screen: full browser width, exactly the
@@ -123,7 +154,7 @@ export function CoinView({ id, config, token, imageUrl }: { id: string; config: 
 
 // ---------------------------------------------------------------- header
 
-function CoinHeader({ data: d, config, imageUrl, token, id }: { data?: CoinData; config: GameConfig; imageUrl: string; token: Address; id: string }) {
+function CoinHeader({ data: d, config, imageUrl, token, id, hidePlay }: { data?: CoinData; config: GameConfig; imageUrl: string; token: Address; id: string; hidePlay?: boolean }) {
   const price = big(d?.chain.price ?? String(COIN_BASE_PRICE));
   const day = Date.now() - 86_400_000;
   const vol24 = (d?.trades ?? []).filter((t) => t.at >= day).reduce((s, t) => s + big(t.value), 0n);
@@ -164,9 +195,15 @@ function CoinHeader({ data: d, config, imageUrl, token, id }: { data?: CoinData;
         <HeadStat label="24h vol" value={d ? `${fmtMonNum(mon(vol24))} MON` : null} />
         <HeadStat label="Holders" value={d ? String(d.holders.length) : null} />
         <HeadStat label="ATH" value={d ? `${fmtMonNum(mcap(big(d.athPrice)))} MON` : null} />
-        <Link href={`/game/${id}`} className={buttonClasses({ variant: "primary", size: "sm" })}>
-          <Icon name="gamepad" size={16} /> Play
-        </Link>
+        {hidePlay ? (
+          <Link href={`/coin/${id}`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+            <Icon name="trendUp" size={16} /> Full chart
+          </Link>
+        ) : (
+          <Link href={`/game/${id}`} className={buttonClasses({ variant: "primary", size: "sm" })}>
+            <Icon name="gamepad" size={16} /> Play
+          </Link>
+        )}
       </div>
     </header>
   );
@@ -337,6 +374,61 @@ function Card({ title, icon, action, children }: { title: string; icon: IconName
         {action}
       </header>
       <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- "more" tabs (game-focused layout)
+
+type More = "chart" | "holders" | "trades" | "stats" | "live" | "about";
+
+/** On the game page everything except the game and the trade panel lives behind these tabs. */
+function MoreTabs({ data: d, accent }: { data?: CoinData; accent: string }) {
+  const [tab, setTab] = useState<More>("chart");
+  return (
+    <section aria-label="Coin details" className="brut flex min-h-0 flex-col overflow-hidden bg-white xl:h-full">
+      <div className="shrink-0 border-b-2 border-ink/10 px-2 py-2">
+        <Segmented<More>
+          size="xs"
+          label="Show"
+          value={tab}
+          onChange={setTab}
+          className="flex w-full flex-wrap [&>button]:flex-1"
+          options={[
+            { value: "chart", label: "Chart" },
+            { value: "holders", label: <>Holders{d ? <span className="ml-1 opacity-60">{d.holders.length}</span> : null}</> },
+            { value: "trades", label: <>Trades{d ? <span className="ml-1 opacity-60">{d.trades.length}</span> : null}</> },
+            { value: "stats", label: "Stats" },
+            { value: "live", label: "Live" },
+            { value: "about", label: "About" },
+          ]}
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {!d && tab !== "live" ? (
+          <div className="space-y-2 p-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-5 w-full" />
+            ))}
+          </div>
+        ) : tab === "chart" ? (
+          <CoinChart trades={d!.trades} createdAt={d!.game.createdAt} accent={accent} height={340} />
+        ) : tab === "holders" ? (
+          <Holders holders={d!.holders} />
+        ) : tab === "trades" ? (
+          <Trades trades={d!.trades} />
+        ) : tab === "stats" ? (
+          <div className="space-y-3 p-3">
+            <StatsCard data={d} />
+            <PoolCard data={d} />
+            <CreatorCard data={d} />
+          </div>
+        ) : tab === "live" ? (
+          <LivePanel />
+        ) : (
+          <About data={d!} />
+        )}
+      </div>
     </section>
   );
 }
