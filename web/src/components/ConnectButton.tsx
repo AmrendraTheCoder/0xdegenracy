@@ -17,7 +17,11 @@ export function ConnectButton() {
   if (!mounted) return <div className="h-10 w-32" />;
 
   if (!isConnected) {
-    const injected = connectors[0];
+    // Prefer a wallet announced via EIP-6963 (MetaMask first) over the generic window.ethereum
+    // connector, which can point at a stale provider or another extension that hijacked it.
+    const announced = connectors.filter((c) => c.id !== "injected");
+    const injected =
+      announced.find((c) => c.id === "io.metamask") ?? announced[0] ?? connectors.find((c) => c.id === "injected");
     return (
       <button
         className="brut-btn bg-white px-3 py-2 text-sm"

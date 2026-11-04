@@ -64,7 +64,10 @@ export function CreateForm() {
       if (address) fd.append("creator", address);
       const launch = await fetch("/api/launch", { method: "POST", body: fd });
       const launchJson = await launch.json();
-      if (!launch.ok) throw new Error(launchJson.error ?? "Launch failed");
+      if (!launch.ok) {
+        // Surface the server's reason (e.g. missing env var, RPC error) instead of a generic message.
+        throw new Error([launchJson.error ?? "Launch failed", launchJson.detail].filter(Boolean).join(" — "));
+      }
 
       setStep("publish");
       router.push(`/game/${launchJson.id}?new=1`);
