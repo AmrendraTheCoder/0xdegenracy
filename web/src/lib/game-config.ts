@@ -3,16 +3,8 @@ import { z } from "zod";
 // The LLM contract. The model may only return this JSON; everything is validated, clamped and
 // defaulted here so a junk response can never break a game page.
 
-/** Hand-built games with a tuned engine. */
-export const PRESET_TYPES = ["flappy", "runner", "dodge", "whack", "snake", "breakout", "shooter"] as const;
-export type PresetType = (typeof PRESET_TYPES)[number];
-/** "custom" = the AI wrote the game's code; it runs in a sandboxed iframe (see lib/customGameHtml.ts). */
-export const GAME_TYPES = [...PRESET_TYPES, "custom"] as const;
+export const GAME_TYPES = ["flappy", "runner", "dodge", "whack", "snake", "breakout", "shooter"] as const;
 export type GameType = (typeof GAME_TYPES)[number];
-export const isPreset = (t: GameType): t is PresetType => t !== "custom";
-
-/** Hard cap on AI-written game code (characters). */
-export const MAX_GAME_CODE = 24_000;
 
 const HEX = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/;
 
@@ -28,12 +20,6 @@ export type GameConfig = {
   goodItemLabel: string;
   colors: { bg: string; fg: string; accent: string };
   difficulty: { speed: number; gravity: number; spawnRate: number };
-  /** Custom games only: the AI-written `createGame(api)` source. */
-  code?: string;
-  /** Custom games only: HMAC proving the code came from our generator (checked at launch). */
-  codeSig?: string;
-  /** The closest preset, used if a custom game can't be generated or crashes. */
-  fallbackType?: PresetType;
 };
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -87,9 +73,6 @@ export function normalizeConfig(raw: unknown, overrides?: { gameType?: GameType;
   const gameType =
     overrides?.gameType ?? (GAME_TYPES.includes(r.gameType as GameType) ? (r.gameType as GameType) : D.gameType);
   const title = cleanText(r.title, 40, D.title);
-  const fallbackType: PresetType = PRESET_TYPES.includes(r.fallbackType as PresetType) ? (r.fallbackType as PresetType) : isPreset(gameType) ? gameType : "runner";
-  const code = gameType === "custom" && typeof r.code === "string" && r.code.length <= MAX_GAME_CODE ? r.code : undefined;
-  const codeSig = code && typeof r.codeSig === "string" && /^[0-9a-f]{64}$/.test(r.codeSig) ? r.codeSig : undefined;
   return {
     gameType,
     title,
@@ -106,9 +89,6 @@ export function normalizeConfig(raw: unknown, overrides?: { gameType?: GameType;
       gravity: clamp(d.gravity, 0.6, 1.6, 1),
       spawnRate: clamp(d.spawnRate, 0.6, 1.8, 1),
     },
-    fallbackType,
-    ...(code ? { code } : {}),
-    ...(codeSig ? { codeSig } : {}),
   };
 }
 
