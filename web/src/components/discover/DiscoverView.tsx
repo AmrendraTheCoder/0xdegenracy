@@ -328,7 +328,7 @@ function CoinRow({ coin: c, rank, window }: { coin: DiscoverCoin; rank?: number;
   const meta = GAME_META[c.gameType];
   return (
     <li>
-      <Link href={`/game/${c.gameId}`} className="group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-banana/30 focus-visible:bg-banana/30">
+      <Link href={`/coin/${c.gameId}`} className="group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-banana/30 focus-visible:bg-banana/30">
         {rank !== undefined && <span className="w-5 shrink-0 text-center text-xs font-bold text-ink/45">{rank}</span>}
         <CoinAvatar src={c.imageUrl} />
         <div className="min-w-0 flex-1">
@@ -375,7 +375,7 @@ const KIND: Record<DiscoverEvent["kind"], { label: string; cls: string; icon: Ic
   settle: { label: "Paid out", cls: "bg-grape text-white", icon: "trophy" },
 };
 
-function Feed({ events }: { events: DiscoverEvent[] }) {
+export function Feed({ events }: { events: DiscoverEvent[] }) {
   return (
     <ol className="divide-y-2 divide-ink/10" aria-label="Recent activity">
       {events.map((e) => {
