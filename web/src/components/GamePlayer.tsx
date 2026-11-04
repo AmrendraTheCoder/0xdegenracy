@@ -35,6 +35,8 @@ export function GamePlayer({ config, imageUrl, gameId, tradeHref = "#buy" }: Gam
       spriteUrl: imageUrl,
       factory: GAMES[config.gameType],
       bestKey,
+      // Respect the OS setting: no screen shake or white flashes for motion-sensitive players.
+      reducedMotion: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
       onStart: () => setLastScore(null),
       onGameOver: (s, b) => {
         setLastScore(s);

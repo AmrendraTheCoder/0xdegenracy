@@ -9,7 +9,7 @@ export function GameCard({ game }: { game: GameRecord }) {
   return (
     <Link
       href={`/game/${game.id}`}
-      className="brut group block overflow-hidden transition hover:-translate-y-1 hover:shadow-[6px_6px_0_#141414]"
+      className="brut brut-hover group block overflow-hidden"
       style={{ background: `linear-gradient(135deg, ${shade(c.colors.bg, 0.1)}, ${shade(c.colors.bg, -0.12)})`, color: c.colors.fg }}
     >
       <div className="flex items-center gap-3 p-3">

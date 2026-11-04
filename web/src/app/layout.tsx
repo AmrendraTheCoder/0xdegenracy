@@ -1,8 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Bricolage_Grotesque, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { ConnectButton } from "@/components/ConnectButton";
+import { NavLinks } from "@/components/NavLinks";
+import { explorerAddress, FACTORY_ADDRESS, FAUCET_URL } from "@/lib/chain";
+
+// Self-hosted at build time by next/font: no request to Google at runtime and no layout shift.
+const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-bricolage", display: "swap" });
+const sans = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-space", display: "swap" });
 
 export const metadata: Metadata = {
   title: "Reachy — every coin ships with a game",
@@ -13,27 +20,43 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="min-h-dvh antialiased">
+    <html lang="en" className={`${display.variable} ${sans.variable}`}>
+      <body className="flex min-h-dvh flex-col antialiased">
+        <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-3 focus:py-2 focus:text-banana">
+          Skip to content
+        </a>
         <Providers>
-          <header className="sticky top-0 z-10 border-b-[3px] border-ink bg-banana">
-            <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-              <div className="flex items-center gap-4">
-                <Link href="/" className="font-[family-name:var(--font-display)] text-2xl font-black tracking-tight">
-                  REACHY<span className="text-hot">.</span>
+          <header className="sticky top-0 z-20 border-b-[3px] border-ink bg-banana/95 backdrop-blur supports-[backdrop-filter]:bg-banana/85">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+                <Link href="/" className="font-[family-name:var(--font-display)] text-2xl font-extrabold tracking-tight" aria-label="Reachy home">
+                  REACHY<span className="text-hot-strong">.</span>
                 </Link>
-                <nav className="flex gap-3 text-sm font-bold">
-                  <Link href="/leaderboard" className="hover:underline">🏆<span className="hidden sm:inline"> Leaderboard</span></Link>
-                  <Link href="/portfolio" className="hover:underline">💼<span className="hidden sm:inline"> Portfolio</span></Link>
-                  <Link href="/activity" className="hover:underline">📜<span className="hidden sm:inline"> Activity</span></Link>
-                </nav>
+                <NavLinks />
               </div>
               <ConnectButton />
             </div>
           </header>
-          <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
-          <footer className="mx-auto max-w-5xl px-4 pb-10 text-xs opacity-70">
-            Monad testnet only. Tokens have no value. Play responsibly, degen.
+          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:py-8">
+            {children}
+          </main>
+          <footer className="border-t-[3px] border-ink bg-white/60">
+            <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-xs sm:flex-row sm:items-center sm:justify-between">
+              <p className="opacity-80">
+                <span className="font-[family-name:var(--font-display)] font-extrabold">REACHY</span> · every coin ships with a game. Monad
+                testnet only. Tokens have no value. Play responsibly, degen.
+              </p>
+              <nav aria-label="Footer" className="flex flex-wrap gap-x-4 gap-y-1 font-bold">
+                <Link className="hover:underline" href="/leaderboard">Prize pool</Link>
+                <Link className="hover:underline" href="/activity">On-chain proof</Link>
+                {FACTORY_ADDRESS && (
+                  <a className="hover:underline" href={explorerAddress(FACTORY_ADDRESS)} target="_blank" rel="noreferrer">
+                    Factory contract ↗
+                  </a>
+                )}
+                <a className="hover:underline" href={FAUCET_URL} target="_blank" rel="noreferrer">Testnet faucet ↗</a>
+              </nav>
+            </div>
           </footer>
         </Providers>
       </body>

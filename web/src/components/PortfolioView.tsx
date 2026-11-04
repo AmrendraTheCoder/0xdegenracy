@@ -274,11 +274,11 @@ function Skeleton() {
     <div className="space-y-4" aria-busy="true" aria-label="Loading portfolio">
       <div className="grid gap-3 sm:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="brut h-20 animate-pulse bg-white/70" />
+          <div key={i} className="brut skeleton h-20" />
         ))}
       </div>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="brut h-28 animate-pulse bg-white/70" />
+        <div key={i} className="brut skeleton h-28" />
       ))}
     </div>
   );

@@ -62,6 +62,8 @@ export type RunOptions = {
   factory: GameFactory;
   /** localStorage key for the best score (per game). */
   bestKey?: string;
+  /** prefers-reduced-motion: no screen shake or white flashes. */
+  reducedMotion?: boolean;
   onGameOver?: (score: number, best: number) => void;
   onStart?: () => void;
   onPhase?: (phase: Phase) => void;
@@ -207,14 +209,18 @@ export function runGame(opts: RunOptions): GameController {
 
   const api: GameApi = {
     cfg,
-    shake: (px) => (shakeAmt = Math.max(shakeAmt, px)),
+    shake: (px) => {
+      if (!opts.reducedMotion) shakeAmt = Math.max(shakeAmt, px);
+    },
     addScore: (n) => (score += n),
     end: (x, y) => {
       if (phase !== "playing") return;
       setPhase("over");
       overAt = performance.now();
-      shakeAmt = 16;
-      flash = 0.35;
+      if (!opts.reducedMotion) {
+        shakeAmt = 16;
+        flash = 0.35;
+      }
       if (x !== undefined && y !== undefined) {
         api.burst(x, y, cfg.colors.accent, 34, 380);
         api.burst(x, y, cfg.colors.fg, 18, 260);

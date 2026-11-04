@@ -24,18 +24,18 @@ export function ConnectButton() {
       announced.find((c) => c.id === "io.metamask") ?? announced[0] ?? connectors.find((c) => c.id === "injected");
     return (
       <button
-        className="brut-btn bg-white px-3 py-2 text-sm"
+        className="brut-btn shrink-0 whitespace-nowrap bg-white px-3 py-2 text-sm"
         disabled={isPending || !injected}
         onClick={() => injected && connect({ connector: injected, chainId: monadTestnet.id })}
       >
-        {isPending ? "Connecting…" : "Connect wallet"}
+        {isPending ? "Connecting…" : (<><span className="sm:hidden">Connect</span><span className="hidden sm:inline">Connect wallet</span></>)}
       </button>
     );
   }
   if (chainId !== monadTestnet.id) {
     return (
       <button className="brut-btn bg-hot px-3 py-2 text-sm text-white" onClick={() => switchChain({ chainId: monadTestnet.id })}>
-        Switch to Monad
+        <span className="sm:hidden">Switch</span><span className="hidden sm:inline">Switch to Monad</span>
       </button>
     );
   }

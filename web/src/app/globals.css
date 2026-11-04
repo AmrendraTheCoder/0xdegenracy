@@ -10,14 +10,56 @@
   /* Darker coral for text on light backgrounds (hot on white is under 3:1). */
   --color-hot-strong: #b42318;
   --color-up: #15803d;
-  --font-display: ui-rounded, "Arial Black", system-ui, sans-serif;
+  /* Fonts come from next/font in layout.tsx (self-hosted, no layout shift); system fallbacks keep it readable offline. */
+  --font-display: var(--font-bricolage), ui-rounded, "Arial Black", system-ui, sans-serif;
+  --font-sans: var(--font-space), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/* ---------------------------------------------------------------- base */
 
 html,
 body {
-  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+body {
+  /* Paper with a faint dot grid: texture without noise. */
+  background-color: var(--color-paper);
+  background-image: radial-gradient(color-mix(in srgb, var(--color-ink) 9%, transparent) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  background-attachment: fixed;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
+::selection {
+  background: var(--color-banana);
   color: var(--color-ink);
 }
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--color-ink) 45%, transparent);
+}
+html {
+  scrollbar-color: var(--color-ink) transparent;
+}
+code,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---------------------------------------------------------------- neo-brutalist surfaces */
 
 /* Deliberately janky: chunky borders, hard shadows. */
 .brut {
@@ -25,13 +67,23 @@ body {
   box-shadow: 4px 4px 0 var(--color-ink);
   border-radius: 14px;
 }
+/* Interactive cards (game cards, links styled as cards) lift toward the pointer. */
+.brut-hover {
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
 .brut-btn {
   border: 3px solid var(--color-ink);
   box-shadow: 4px 4px 0 var(--color-ink);
   border-radius: 12px;
   font-family: var(--font-display);
-  font-weight: 900;
-  transition: transform 80ms, box-shadow 80ms;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  transition:
+    transform 90ms ease,
+    box-shadow 90ms ease,
+    background-color 120ms ease;
 }
 .brut-btn:active:not(:disabled) {
   transform: translate(3px, 3px);
@@ -41,18 +93,73 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Hover lift only where a real pointer can hover (no sticky hover on phones). */
+@media (hover: hover) and (pointer: fine) {
+  .brut-btn:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--color-ink);
+  }
+  .brut-hover:hover {
+    transform: translate(-2px, -3px);
+    box-shadow: 6px 7px 0 var(--color-ink);
+  }
+}
+
+/* Header nav pill: the current page reads as "pressed in". */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-weight: 700;
+  transition: background-color 120ms ease;
+}
+.nav-link:hover {
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+.nav-link[aria-current="page"] {
+  background: var(--color-ink);
+  color: var(--color-banana);
+}
+
+/* Loading placeholders: a soft shimmer instead of a hard pulse. */
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-ink) 8%, transparent) 0%,
+    color-mix(in srgb, var(--color-ink) 14%, transparent) 50%,
+    color-mix(in srgb, var(--color-ink) 8%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 canvas.game {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
+/* ---------------------------------------------------------------- accessibility */
+
 /* Visible keyboard focus everywhere, never on mouse click. */
 :focus-visible {
   outline: 3px solid var(--color-grape);
   outline-offset: 2px;
 }
-.brut-btn:focus-visible {
+.brut-btn:focus-visible,
+.nav-link:focus-visible {
   outline-offset: 3px;
 }
 canvas.game:focus-visible {
@@ -65,7 +172,16 @@ canvas.game:focus-visible {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .brut-btn {
+  .brut-btn,
+  .brut-hover,
+  .nav-link {
     transition: none;
+  }
+  .brut-btn:hover:not(:disabled),
+  .brut-hover:hover {
+    transform: none;
+  }
+  .skeleton {
+    animation: none;
   }
 }

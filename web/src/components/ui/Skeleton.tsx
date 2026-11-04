@@ -5,7 +5,7 @@ export function Skeleton({ className, width, height }: { className?: string; wid
   return (
     <span
       aria-hidden
-      className={cn("block rounded-md bg-ink/10 motion-safe:animate-pulse", className)}
+      className={cn("skeleton block", className)}
       style={{ width, height }}
     />
   );
