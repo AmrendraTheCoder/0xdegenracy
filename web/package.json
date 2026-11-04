@@ -1,5 +1,5 @@
 {
-  "name": "reachy-web",
+  "name": "0xdegenracy-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -30,5 +30,8 @@
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.4",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

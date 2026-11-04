@@ -95,7 +95,7 @@ export async function settleDay(day: bigint) {
 
 const tokenCache = new Map<string, boolean>();
 /** True only for tokens deployed by our factory. Cached, since the answer never changes. */
-export async function isReachyToken(token: Address): Promise<boolean> {
+export async function isFactoryToken(token: Address): Promise<boolean> {
   const key = token.toLowerCase();
   if (tokenCache.has(key)) return tokenCache.get(key)!;
   const ok = await publicClient().readContract({
@@ -122,14 +122,16 @@ export type DecodedTrade = {
   timestamp: number;
 };
 
-/** Reads a transaction receipt and returns the Reachy trades in it. Verifies everything on-chain. */
+/** Reads a transaction receipt and returns the trades of our games' coins in it. Verifies everything on-chain. */
 export async function tradesFromTx(txHash: Hex): Promise<DecodedTrade[]> {
   const client = publicClient();
-  // The client posts right after its own receipt, but our RPC node may lag a block behind.
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // The browser posts the moment its wallet sees the receipt (~0.4s on Monad), but the public RPC is a
+  // pool of nodes and the one we hit can be a block or two behind. Retry for a few seconds.
   let receipt = null;
-  for (let i = 0; i < 6 && !receipt; i++) {
+  for (let i = 0; i < 10 && !receipt; i++) {
     receipt = await client.getTransactionReceipt({ hash: txHash }).catch(() => null);
-    if (!receipt) await new Promise((r) => setTimeout(r, 400));
+    if (!receipt) await sleep(500);
   }
   if (!receipt) throw new Error("receipt not found");
   if (receipt.status !== "success") return [];
@@ -138,11 +140,24 @@ export async function tradesFromTx(txHash: Hex): Promise<DecodedTrade[]> {
     (l) => l.eventName === "Bought" || l.eventName === "Sold",
   );
   if (!logs.length) return [];
-  const block = await client.getBlock({ blockNumber: receipt.blockNumber });
+
+  // A lagging node answers eth_getBlockByNumber for a brand-new block with "Invalid parameters".
+  // The timestamp only places the dot on the price chart, so retry briefly and then use "now"
+  // (the trade happened within the last second or two) instead of failing to record the trade.
+  let timestamp = Math.floor(Date.now() / 1000);
+  for (let i = 0; i < 4; i++) {
+    const block = await client.getBlock({ blockHash: receipt.blockHash }).catch(() => null);
+    if (block) {
+      timestamp = Number(block.timestamp);
+      break;
+    }
+    await sleep(400);
+  }
+  const block = { timestamp: BigInt(timestamp) };
 
   const out: DecodedTrade[] = [];
   for (const l of logs) {
-    if (!(await isReachyToken(l.address))) continue; // someone else's contract emitting look-alike events
+    if (!(await isFactoryToken(l.address))) continue; // someone else's contract emitting look-alike events
     const base = { id: `${txHash}:${l.logIndex}`, token: l.address, txHash, blockNumber: receipt.blockNumber, timestamp: Number(block.timestamp) };
     if (l.eventName === "Bought") {
       const a = l.args as { buyer: Address; tokensWhole: bigint; cost: bigint; fee: bigint; newPrice: bigint };
